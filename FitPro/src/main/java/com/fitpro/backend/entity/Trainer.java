@@ -3,6 +3,8 @@ package com.fitpro.backend.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.List;
+
 @Entity
 @Data
 public class Trainer {
@@ -20,5 +22,7 @@ public class Trainer {
     @OneToOne
     @JoinColumn(name = "user_id")
     private AppUser user;
-    
+
+    @OneToMany(mappedBy = "trainer")
+    private List<Member> members;
 }
