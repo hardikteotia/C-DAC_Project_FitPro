@@ -35,12 +35,17 @@ public class MemberService {
     public Member registerMember(MemberRegistrationRequest request) {
 
         //first we will create the login Account ()
+        //member is a user so we're creating a new user
         AppUser user = new AppUser();
+
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
-        user.setRole(Role.MEMBER);
+        user.setRole(Role.MEMBER);//setting the role ourselves cuz its member registration request
 
-        user = userRepo.save(user);
+        user = userRepo.save(user);/*why we use save here but not persist cuz in save we can insert and update already
+                                   existing data but in persist we can't update it throws exception(EntityExistException)
+
+                                   -- and save returns the saved object where as persist returns void means nothing*/
 
         //now we will fetch the plans
         MembershipPlan plan = planRepo.findById(request.getPlanId())
@@ -94,7 +99,7 @@ public class MemberService {
         member.setName(memberDetails.getName());
         member.setPhone(memberDetails.getPhone());
         member.setAddress(memberDetails.getAddress());
-        // Note: We usually don't update Plan/Trainer here, but we can if you want
+        // Note: We usually don't update Plan/Trainer here, but we can
 
         return memberRepo.save(member);
     }
@@ -105,9 +110,15 @@ public class MemberService {
 
         updates.forEach((key, value) -> {
             switch (key) {
-                case "phone": member.setPhone((String) value); break;
-                case "address": member.setAddress((String) value); break;
-                case "name": member.setName((String) value); break;
+                case "phone":
+                    member.setPhone((String) value);
+                    break;
+                case "address":
+                    member.setAddress((String) value);
+                    break;
+                case "name":
+                    member.setName((String) value);
+                    break;
             }
         });
         return memberRepo.save(member);
