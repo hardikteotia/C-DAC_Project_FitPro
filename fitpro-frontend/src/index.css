@@ -1,0 +1,65 @@
+/* Import Bootstrap CSS */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+:root {
+  --gym-base: #0f172a;    /* Dark Slate Background */
+  --gym-card: #1e293b;    /* Lighter Card Background */
+  --gym-gold: #f59e0b;    /* Amber Gold */
+  --gym-gold-hover: #d97706;
+  --gym-text: #f8fafc;    /* White Text */
+  --gym-muted: #94a3b8;   /* Gray Text */
+}
+
+body {
+  background-color: var(--gym-base) !important;
+  color: var(--gym-text) !important;
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Bootstrap Overrides --- */
+
+/* Cards */
+.card {
+  background-color: var(--gym-card) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--gym-text) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+/* Inputs */
+.form-control, .form-select {
+  background-color: var(--gym-base) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--gym-gold) !important;
+  box-shadow: 0 0 0 0.25rem rgba(245, 158, 11, 0.25) !important;
+}
+
+/* Buttons */
+.btn-gold {
+  background-color: var(--gym-gold) !important;
+  color: #000 !important;
+  font-weight: 700 !important;
+  border: none !important;
+}
+.btn-gold:hover {
+  background-color: var(--gym-gold-hover) !important;
+}
+
+.btn-outline-gold {
+  border: 1px solid var(--gym-gold) !important;
+  color: var(--gym-gold) !important;
+}
+.btn-outline-gold:hover {
+  background-color: var(--gym-gold) !important;
+  color: #000 !important;
+}
+
+/* Tables */
+.table {
+  --bs-table-bg: transparent !important;
+  --bs-table-color: var(--gym-text) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
