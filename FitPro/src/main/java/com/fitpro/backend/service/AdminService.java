@@ -27,6 +27,11 @@ public class AdminService {
     // ---------------------------------------------------
 
     public MembershipPlan createPlan(MembershipPlan plan) {
+        // 1. Check for duplicate
+        if (planRepo.existsByPlanName(plan.getPlanName())) {
+            throw new RuntimeException("Plan already exists with name: " + plan.getPlanName());
+        }
+        // 2. Save if unique
         return planRepo.save(plan);
     }
 

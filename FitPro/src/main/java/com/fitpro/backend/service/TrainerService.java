@@ -1,7 +1,10 @@
 package com.fitpro.backend.service;
 
+import com.fitpro.backend.entity.AppUser;
 import com.fitpro.backend.entity.Member;
+import com.fitpro.backend.entity.Role;
 import com.fitpro.backend.entity.Trainer;
+import com.fitpro.backend.repository.AppUserRepository;
 import com.fitpro.backend.repository.MemberRepository;
 import com.fitpro.backend.repository.TrainerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,9 @@ public class TrainerService {
     @Autowired
     private MemberRepository memberRepo; // Needed for the "Safety Delete"
 
+    @Autowired
+    private AppUserRepository userRepo; // <--- Add this!
+
     // 1. GET ALL
     public List<Trainer> getAllTrainers() {
         return trainerRepo.findAll();
@@ -34,8 +40,28 @@ public class TrainerService {
 
     // 3. CREATE (Admin adds a trainer) - *Simplified for now, just saves the profile*
     public Trainer createTrainer(Trainer trainer) {
-        // In a real app, you would create the AppUser login here too.
-        // For now, we assume we are just adding the profile details.
+        // 1. Check if phone already exists (Optional but good)
+        // if (trainerRepo.existsByPhone(trainer.getPhone())) ...
+
+        // 2. Create a Login Account (AppUser) for this Trainer
+        AppUser user = new AppUser();
+
+        // Auto-generate email: "JohnCena" -> "johncena@fitpro.com"
+        String email = trainer.getTrainerName().replaceAll("\\s+", "").toLowerCase() + "@fitpro.com";
+        user.setEmail(email);
+
+        // Default Password: "Trainer@123" (They can change it later)
+        user.setPassword("Trainer@123");
+
+        user.setRole(Role.TRAINER); // Set Role
+
+        // 3. Save User First
+        AppUser savedUser = userRepo.save(user);
+
+        // 4. Link User to Trainer
+        trainer.setUser(savedUser);
+
+        // 5. Save Trainer
         return trainerRepo.save(trainer);
     }
 

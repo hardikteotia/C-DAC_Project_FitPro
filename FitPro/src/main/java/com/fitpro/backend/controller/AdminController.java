@@ -62,11 +62,11 @@ public class AdminController {
         return memberService.getAllMembers();
     }
 
-//    // Admin Creates a Member (Walk-in Client)
-//    @PostMapping("/members")
-//    public Member createMember(@RequestBody MemberRegistrationRequest request) {
-//        return memberService.registerMember(request);
-//    }
+    // Admin Creates a Member (Walk-in Client)
+    @PostMapping("/members")
+    public Member createMember(@RequestBody MemberRegistrationRequest request) {
+        return memberService.registerMember(request);
+    }
 
     // Admin Updates Member (Fixing mistakes)
     @PutMapping("/members/{id}")
