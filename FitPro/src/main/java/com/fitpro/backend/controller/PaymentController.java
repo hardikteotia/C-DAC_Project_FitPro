@@ -1,12 +1,10 @@
 package com.fitpro.backend.controller;
 
-import com.fitpro.backend.entity.Member;
 import com.fitpro.backend.entity.Payment;
-import com.fitpro.backend.repository.MemberRepository;
-import com.fitpro.backend.repository.PaymentRepository;
+import com.fitpro.backend.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDate;
+
 import java.util.List;
 
 @RestController
@@ -15,27 +13,21 @@ import java.util.List;
 public class PaymentController {
 
     @Autowired
-    private PaymentRepository paymentRepo;
-    @Autowired
-    private MemberRepository memberRepo;
+    private PaymentService paymentService;
 
-    // Record Payment (POST /api/payments?memberId=1&amount=5000&method=UPI)
+    // 1. ADMIN RECORDS PAYMENT
+    // URL: POST http://localhost:8080/api/payments?memberId=1&amount=5000&method=Cash
     @PostMapping
-    public Payment recordPayment(@RequestParam Long memberId, @RequestParam Double amount, @RequestParam String method) {
-        Member member = memberRepo.findById(memberId).orElseThrow(() -> new RuntimeException("Member not found"));
-
-        Payment payment = new Payment();
-        payment.setAmount(amount);
-        payment.setPaymentMethod(method);
-        payment.setPaymentDate(LocalDate.now());
-        payment.setMember(member);
-
-        return paymentRepo.save(payment);
+    public Payment recordPayment(@RequestParam Long memberId,
+                                 @RequestParam Double amount,
+                                 @RequestParam String method) {
+        return paymentService.recordPayment(memberId, amount, method);
     }
 
-    // Get History (GET /api/payments/1)
+    // 2. VIEW HISTORY (Admin checks a user, or User checks themselves)
+    // URL: GET http://localhost:8080/api/payments/1
     @GetMapping("/{memberId}")
     public List<Payment> getHistory(@PathVariable Long memberId) {
-        return paymentRepo.findByMemberId(memberId);
+        return paymentService.getPaymentHistory(memberId);
     }
 }

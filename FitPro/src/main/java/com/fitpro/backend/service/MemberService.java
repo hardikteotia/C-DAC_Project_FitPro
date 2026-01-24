@@ -31,39 +31,42 @@ public class MemberService {
     @Autowired
     private TrainerRepository trainerRepo;
 
-    @Transactional //if something goes wrong rollback
+    @Transactional // Good practice! Keep this.
     public Member registerMember(MemberRegistrationRequest request) {
 
-        //first we will create the login Account ()
-        //member is a user so we're creating a new user
-        AppUser user = new AppUser();
+        // --- 1. NEW FIX: Prevent Duplicate Emails ---
+        // This stops the application from crashing with a 500 SQL Error
+        if (userRepo.findByEmail(request.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered!");
+        }
 
+        // 2. Create Login Account
+        AppUser user = new AppUser();
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
-        user.setRole(Role.MEMBER);//setting the role ourselves cuz its member registration request
+        user.setRole(Role.MEMBER);
 
-        user = userRepo.save(user);/*why we use save here but not persist cuz in save we can insert and update already
-                                   existing data but in persist we can't update it throws exception(EntityExistException)
+        user = userRepo.save(user);
 
-                                   -- and save returns the saved object where as persist returns void means nothing*/
-
-        //now we will fetch the plans
+        // 3. Fetch Plan
         MembershipPlan plan = planRepo.findById(request.getPlanId())
                 .orElseThrow(() -> new RuntimeException("Plan not found"));
 
-        //now we're creating here Member profile
+        // 4. Create Member Profile
         Member member = new Member();
         member.setName(request.getName());
         member.setPhone(request.getPhone());
         member.setAddress(request.getAddress());
-        member.setUser(user); //linking the login
-        member.setMembershipPlan(plan);//linking the plan
+        member.setUser(user);
+        member.setMembershipPlan(plan);
 
-        //managing dates here
-        member.setStartDate(LocalDate.now());
-        member.setEndDate(LocalDate.now().plusDays(plan.getDurationInDays()));
+        // 5. Date Management -> CORRECT!
+        // You have commented these out. This is EXACTLY what we want.
+        // Dates will remain NULL until they pay.
+        // member.setStartDate(LocalDate.now());
+        // member.setEndDate(LocalDate.now().plusDays(plan.getDurationInDays()));
 
-        //linking trainer
+        // 6. Link Trainer
         if (request.getTrainerId() != null) {
             Trainer trainer = trainerRepo.findById(request.getTrainerId())
                     .orElseThrow(() -> new RuntimeException("Trainer not found"));
