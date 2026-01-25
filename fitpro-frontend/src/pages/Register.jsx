@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Form, Button, Card, Row, Col, Container } from 'react-bootstrap';
+import { Form, Button, Card, Row, Col } from 'react-bootstrap'; 
 import api from '../api/axios';
 
 const Register = () => {
@@ -12,8 +12,9 @@ const Register = () => {
     });
 
     useEffect(() => {
-        api.get('/public/plans').then(res => setPlans(res.data));
-        api.get('/public/trainers').then(res => setTrainers(res.data));
+        // Fetch plans and trainers
+        api.get('/public/plans').then(res => setPlans(res.data)).catch(err => console.log(err));
+        api.get('/public/trainers').then(res => setTrainers(res.data)).catch(err => console.log(err));
     }, []);
 
     const handleSubmit = async (e) => {
@@ -29,8 +30,9 @@ const Register = () => {
 
     const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
 
+    // SAFE MODE: Using standard <div> instead of <Container> to prevent crashes
     return (
-        <Container className="d-flex justify-content-center align-items-center" style={{minHeight: '80vh'}}>
+        <div className="container d-flex justify-content-center align-items-center" style={{minHeight: '80vh'}}>
             <Card className="p-4 w-100" style={{maxWidth: '700px'}}>
                 <Card.Body>
                     <h2 className="text-center text-warning fw-bold mb-4">Join FitPro</h2>
@@ -70,7 +72,7 @@ const Register = () => {
                     </Form>
                 </Card.Body>
             </Card>
-        </Container>
+        </div>
     );
 };
 
