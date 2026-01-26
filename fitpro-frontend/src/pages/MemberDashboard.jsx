@@ -1,214 +1,192 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { Row, Col, Card, Table, Badge, Button, Modal, Form } from 'react-bootstrap';
-import { Calendar, CreditCard, User, Activity, AlertCircle } from 'lucide-react';
+import { Container, Card, Row, Col, Button, Badge, Spinner, Modal, Form } from 'react-bootstrap';
+import { CreditCard, User, Calendar, CheckCircle, Lock } from 'lucide-react';
 
 const MemberDashboard = () => {
     const { user } = useAuth();
     const [member, setMember] = useState(null);
-    const [payments, setPayments] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [attendance, setAttendance] = useState([]);
-    
-    // Payment Modal State
+
+    // Payment State
     const [showPayModal, setShowPayModal] = useState(false);
     const [processing, setProcessing] = useState(false);
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
+    const [cardData, setCardData] = useState({ number: '', expiry: '', cvv: '', name: '' });
 
-    const fetchData = () => {
-        if (user?.id) {
-            api.get(`/members/${user.id}`).then(res => setMember(res.data));
-            api.get(`/payments/${user.id}`).then(res => setPayments(res.data));
-            api.get(`/attendance/member/${user.id}`).then(res => setAttendance(res.data));
+    const fetchMemberData = async () => {
+        try {
+            const res = await api.get('/members');
+            const myProfile = res.data.find(m => m.user?.email === user.email);
+            setMember(myProfile);
+
+            if (myProfile) {
+                const attRes = await api.get(`/attendance/member/${myProfile.id}`);
+                setAttendance(attRes.data);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [user]);
+    useEffect(() => { if (user) fetchMemberData(); }, [user]);
 
-    // Handle "Mock" Payment
-    const handlePayment = async () => {
+    // ... Payment Handlers (Keep same as before) ...
+    const handlePayment = async (e) => {
+        e.preventDefault();
         setProcessing(true);
-        
-        // SIMULATE PAYMENT GATEWAY DELAY (2 Seconds)
         setTimeout(async () => {
             try {
-                // Call Backend to record payment
-                // We use the same endpoint the Admin uses, but mark method as 'Online'
-                await api.post(`/payments?memberId=${member.id}&amount=${member.membershipPlan.price}&method=Online`);
-                
-                alert("Payment Successful! Your plan is now Active.");
-                setShowPayModal(false);
-                fetchData(); // Refresh data to show 'Active' immediately
-            } catch (error) {
-                alert("Payment Failed: " + error.message);
-            } finally {
+                const amount = member.membershipPlan?.price || 1000;
+                await api.post(`/payments?memberId=${member.id}&amount=${amount}&method=Credit Card`);
+                setPaymentSuccess(true);
+                setProcessing(false);
+                setTimeout(() => {
+                    setShowPayModal(false);
+                    setPaymentSuccess(false);
+                    setCardData({ number: '', expiry: '', cvv: '', name: '' });
+                    fetchMemberData(); 
+                }, 2000);
+            } catch (err) {
+                alert("Payment Failed: " + err.message);
                 setProcessing(false);
             }
-        }, 2000);
+        }, 2000); 
     };
 
-    if (!member) return <div className="text-white text-center mt-5">Loading Profile...</div>;
+    const handleCardNumber = (e) => {
+        const val = e.target.value.replace(/\D/g, '').substring(0, 16);
+        const formatted = val.match(/.{1,4}/g)?.join(' ') || val;
+        setCardData({ ...cardData, number: formatted });
+    };
 
-    // Check if Plan is Active
-    const isActive = member.endDate && new Date(member.endDate) > new Date();
+    if (loading) return <div className="text-center mt-5 text-white"><Spinner animation="border" variant="warning"/></div>;
+    if (!member) return <Container className="text-center mt-5 text-white"><h3>Profile Not Found</h3></Container>;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isCheckedInToday = attendance.some(a => a.date === todayStr);
+
+    // 👇 FILTER DUPLICATES & SORT (Shows unique dates only)
+    const uniqueAttendance = [...new Map(attendance.map(item => [item.date, item])).values()]
+                             .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort Newest First
+                             .slice(0, 5); // Take top 5
 
     return (
         <div className="fade-in">
-            <Row className="g-4">
-                {/* Left Column: Profile & Payment Action */}
-                <Col lg={4}>
-                    {/* PROFILE CARD */}
-                    <Card className="text-center p-3 h-100 mb-4">
-                        <Card.Body>
-                            <div className="rounded-circle bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center mx-auto mb-3" 
-                                 style={{width: '100px', height: '100px'}}>
-                                <User size={48} className="text-warning" />
-                            </div>
-                            <h3 className="text-white fw-bold">{member.name}</h3>
-                            <p className="text-secondary">{member.user?.email}</p>
-                            
-                            <div className="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-2 mt-3">
-                                <span className="text-secondary">Plan</span>
-                                <span className="text-warning fw-bold">{member.membershipPlan?.planName}</span>
-                            </div>
-                            <div className="d-flex justify-content-between border-bottom border-secondary border-opacity-25 py-2">
-                                <span className="text-secondary">Trainer</span>
-                                <span className="text-white">{member.trainer ? member.trainer.trainerName : 'None'}</span>
-                            </div>
-                            <div className="d-flex justify-content-between py-2">
-                                <span className="text-secondary">Status</span>
-                                <Badge bg={isActive ? "success" : "danger"}>{isActive ? 'Active' : 'Expired'}</Badge>
-                            </div>
-                        </Card.Body>
-                    </Card>
+            {/* 👇 CUSTOM SCROLLBAR STYLE */}
+            <style>{`
+                .custom-scroll::-webkit-scrollbar { width: 6px; }
+                .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
+                .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+                .custom-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+            `}</style>
 
-                    {/* PAY NOW CARD (Only shows if Expired) */}
-                    {!isActive && (
-                        <Card className="border-danger shadow-lg">
-                            <Card.Body className="text-center">
-                                <AlertCircle size={40} className="text-danger mb-2" />
-                                <h4 className="text-white">Subscription Expired</h4>
-                                <p className="text-secondary small">Renew your {member.membershipPlan?.planName} to continue access.</p>
-                                <Button variant="danger" className="w-100 fw-bold py-2" onClick={() => setShowPayModal(true)}>
-                                    PAY ₹{member.membershipPlan?.price} NOW
-                                </Button>
-                            </Card.Body>
-                        </Card>
-                    )}
-                </Col>
+            <Container className="py-5">
+                <div className="d-flex justify-content-between align-items-center mb-5">
+                    <div>
+                        <h1 className="fw-bold text-white">Hello, <span className="text-warning">{member.name}</span></h1>
+                        <p className="text-secondary">Welcome back to the grind.</p>
+                    </div>
+                    <Badge bg={member.endDate ? "success" : "danger"} className="px-3 py-2 fs-6">
+                        {member.endDate ? "Active Member" : "Membership Expired"}
+                    </Badge>
+                </div>
 
-                {/* Right Column: Stats & History */}
-                <Col lg={8}>
-                    <div className="d-flex flex-column gap-4">
-                        {/* Validity Card */}
-                        <Card>
-                            <Card.Header className="bg-transparent border-0 text-white fw-bold d-flex align-items-center gap-2">
-                                <Calendar className="text-warning" size={20} /> Subscription Validity
+                <Row className="g-4">
+                    {/* Membership Card */}
+                    <Col md={4}>
+                        <Card className="bg-dark border-secondary text-white h-100 shadow-lg">
+                            <Card.Header className="bg-transparent border-secondary py-3">
+                                <h5 className="m-0 d-flex align-items-center gap-2"><CreditCard size={20} className="text-warning"/> Membership</h5>
                             </Card.Header>
                             <Card.Body>
-                                <Row>
-                                    <Col xs={6} className="text-center border-end border-secondary border-opacity-25">
-                                        <small className="text-secondary text-uppercase">Start Date</small>
-                                        <h5 className="text-white font-monospace mt-1">{member.startDate || 'N/A'}</h5>
-                                    </Col>
-                                    <Col xs={6} className="text-center">
-                                        <small className="text-secondary text-uppercase">End Date</small>
-                                        <h5 className="text-warning font-monospace mt-1">{member.endDate || 'N/A'}</h5>
-                                    </Col>
-                                </Row>
-                            </Card.Body>
-                        </Card>
-
-                        {/* Payment History */}
-                        <Card>
-                            <Card.Header className="bg-transparent border-0 text-white fw-bold d-flex align-items-center gap-2">
-                                <CreditCard className="text-warning" size={20} /> Payment History
-                            </Card.Header>
-                            <Card.Body className="p-0">
-                                <Table hover responsive className="mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th className="bg-transparent text-secondary ps-4">Date</th>
-                                            <th className="bg-transparent text-secondary">Amount</th>
-                                            <th className="bg-transparent text-secondary">Method</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {payments.map(pay => (
-                                            <tr key={pay.id}>
-                                                <td className="ps-4 font-monospace">{pay.paymentDate}</td>
-                                                <td className="text-success fw-bold">₹{pay.amount}</td>
-                                                <td className="text-secondary">{pay.paymentMethod}</td>
-                                            </tr>
-                                        ))}
-                                        {payments.length === 0 && (
-                                            <tr>
-                                                <td colSpan="3" className="text-center text-secondary py-3">No payments found.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </Table>
-                            </Card.Body>
-                        </Card>
-                        
-                         {/* Attendance Log */}
-                        <Card>
-                            <Card.Header className="bg-transparent border-0 text-white fw-bold d-flex align-items-center gap-2">
-                                <Activity className="text-warning" size={20} /> Attendance Log
-                            </Card.Header>
-                            <Card.Body>
-                                <div className="d-flex flex-wrap gap-2">
-                                    {attendance.map(record => (
-                                        <Badge key={record.id} bg="success" className="bg-opacity-25 text-success border border-success px-3 py-2 font-monospace">
-                                            {record.date}
-                                        </Badge>
-                                    ))}
-                                    {attendance.length === 0 && <span className="text-secondary">No attendance recorded.</span>}
+                                <div className="mb-3">
+                                    <small className="text-secondary text-uppercase fw-bold">Plan</small>
+                                    <h3 className="fw-bold text-white">{member.membershipPlan?.planName || "No Plan"}</h3>
+                                </div>
+                                <div className="d-flex justify-content-between">
+                                    <div><small className="text-secondary fw-bold">Expires</small><p className={member.endDate ? "text-white" : "text-danger"}>{member.endDate || "Expired"}</p></div>
+                                    {!member.endDate && <Button size="sm" variant="gold" onClick={() => setShowPayModal(true)}>Renew</Button>}
                                 </div>
                             </Card.Body>
                         </Card>
-                    </div>
-                </Col>
-            </Row>
+                    </Col>
 
-            {/* MOCK PAYMENT MODAL */}
-            <Modal show={showPayModal} onHide={() => setShowPayModal(false)} centered>
-                <Modal.Header closeButton className="bg-dark border-secondary">
-                    <Modal.Title className="text-white">Secure Payment</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className="bg-dark text-white">
-                    <div className="text-center mb-4">
-                        <h2 className="text-success fw-bold">₹{member.membershipPlan?.price}</h2>
-                        <p className="text-secondary">Upgrade to {member.membershipPlan?.planName}</p>
-                    </div>
-                    
-                    <Form.Group className="mb-3">
-                        <Form.Label>Card Number</Form.Label>
-                        <Form.Control type="text" placeholder="4242 4242 4242 4242" className="bg-secondary bg-opacity-10 border-secondary text-white" />
-                    </Form.Group>
-                    <Row>
-                        <Col>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Expiry</Form.Label>
-                                <Form.Control type="text" placeholder="MM/YY" className="bg-secondary bg-opacity-10 border-secondary text-white" />
-                            </Form.Group>
-                        </Col>
-                        <Col>
-                            <Form.Group className="mb-3">
-                                <Form.Label>CVV</Form.Label>
-                                <Form.Control type="text" placeholder="123" className="bg-secondary bg-opacity-10 border-secondary text-white" />
-                            </Form.Group>
-                        </Col>
-                    </Row>
-                </Modal.Body>
-                <Modal.Footer className="bg-dark border-secondary">
-                    <Button variant="secondary" onClick={() => setShowPayModal(false)}>Cancel</Button>
-                    <Button variant="success" onClick={handlePayment} disabled={processing}>
-                        {processing ? 'Processing...' : 'Pay Now'}
-                    </Button>
-                </Modal.Footer>
-            </Modal>
+                    {/* Trainer Card */}
+                    <Col md={4}>
+                        <Card className="bg-dark border-secondary text-white h-100 shadow-lg">
+                            <Card.Header className="bg-transparent border-secondary py-3">
+                                <h5 className="m-0 d-flex align-items-center gap-2"><User size={20} className="text-warning"/> Trainer</h5>
+                            </Card.Header>
+                            <Card.Body className="text-center">
+                                {member.trainer ? (
+                                    <>
+                                        <h4>{member.trainer.trainerName}</h4>
+                                        <Badge bg="info" className="bg-opacity-25 text-info">{member.trainer.specialization}</Badge>
+                                        <p className="text-secondary mt-2 small">{member.trainer.phone}</p>
+                                    </>
+                                ) : <p className="text-secondary py-3">No trainer assigned.</p>}
+                            </Card.Body>
+                        </Card>
+                    </Col>
+
+                    {/* 👇 ATTENDANCE CARD (UPDATED) */}
+                    <Col md={4}>
+                        <Card className="bg-dark border-secondary text-white h-100 shadow-lg">
+                            <Card.Header className="bg-transparent border-secondary py-3 d-flex justify-content-between">
+                                <h5 className="m-0 d-flex align-items-center gap-2"><Calendar size={20} className="text-warning"/> Attendance</h5>
+                                {isCheckedInToday && <Badge bg="success">Checked In ✅</Badge>}
+                            </Card.Header>
+                            <Card.Body>
+                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <span className="text-secondary">Total Days Present</span>
+                                    <h2 className="fw-bold text-success m-0">{attendance.length}</h2>
+                                </div>
+                                <hr className="border-secondary opacity-25"/>
+                                <h6 className="text-secondary small fw-bold mb-3">RECENT CHECK-INS</h6>
+                                
+                                {uniqueAttendance.length > 0 ? (
+                                    <div className="custom-scroll" style={{maxHeight: '120px', overflowY: 'auto', paddingRight: '5px'}}>
+                                        {uniqueAttendance.map((att, index) => (
+                                            <div key={index} className="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary border-opacity-10">
+                                                <span className="text-light">{att.date}</span>
+                                                <Badge bg="success" className="bg-opacity-10 text-success border border-success border-opacity-25">Present</Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-secondary small text-center py-3">No attendance records yet.</p>
+                                )}
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                </Row>
+
+                {/* Mock Payment Modal */}
+                <Modal show={showPayModal} onHide={() => !processing && setShowPayModal(false)} centered backdrop="static">
+                    <Modal.Header closeButton={!processing} className="bg-light border-0">
+                        <Modal.Title className="fw-bold d-flex align-items-center gap-2"><Lock size={20} className="text-success"/> Secure Payment</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body className="bg-light p-4">
+                        {paymentSuccess ? (
+                            <div className="text-center py-4"><CheckCircle size={60} className="text-success mb-3"/><h4 className="fw-bold text-success">Payment Successful!</h4></div>
+                        ) : processing ? (
+                            <div className="text-center py-5"><Spinner animation="border" variant="primary"/><h5 className="mt-3">Processing...</h5></div>
+                        ) : (
+                            <Form onSubmit={handlePayment}>
+                                <div className="d-flex justify-content-between mb-4"><h5 className="fw-bold">Total</h5><h4 className="fw-bold">₹{member.membershipPlan?.price || 1000}</h4></div>
+                                <Form.Group className="mb-3"><Form.Label className="small fw-bold text-secondary">CARD NUMBER</Form.Label><Form.Control value={cardData.number} onChange={handleCardNumber} maxLength="19" required/></Form.Group>
+                                <Row><Col><Form.Control placeholder="MM/YY" required/></Col><Col><Form.Control placeholder="CVV" required/></Col></Row>
+                                <Button variant="dark" type="submit" className="w-100 mt-4 fw-bold">Pay Now</Button>
+                            </Form>
+                        )}
+                    </Modal.Body>
+                </Modal>
+            </Container>
         </div>
     );
 };
