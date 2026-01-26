@@ -27,16 +27,8 @@ public class MemberService {
     @Autowired
     private TrainerRepository trainerRepo;
 
-    // 👇 ADDED THESE REPOSITORIES FOR DELETION LOGIC 👇
-    @Autowired
-    private PaymentRepository paymentRepo;
-
-    @Autowired
-    private AttendanceRepository attendanceRepo;
-
     @Transactional
     public Member registerMember(MemberRegistrationRequest request) {
-
         // 1. Prevent Duplicate Emails
         if (userRepo.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("Email already registered!");
@@ -61,6 +53,7 @@ public class MemberService {
         member.setAddress(request.getAddress());
         member.setUser(user);
         member.setMembershipPlan(plan);
+        // Default active = true is set in Entity, but good to know
 
         // 5. Link Trainer
         if (request.getTrainerId() != null) {
@@ -72,9 +65,9 @@ public class MemberService {
         return memberRepo.save(member);
     }
 
-    // 1. READ ALL
+    // 1. READ ALL (Active Only) - 👇 UPDATED
     public List<Member> getAllMembers() {
-        return memberRepo.findAll();
+        return memberRepo.findByActiveTrue();
     }
 
     // 2. READ ONE
@@ -83,27 +76,18 @@ public class MemberService {
                 .orElseThrow(() -> new RuntimeException("Member not found with ID: " + id));
     }
 
-    // 3. SAFE DELETE (The Fix!)
+    // 3. SOFT DELETE (Mark as Inactive) - 👇 UPDATED
     @Transactional
     public void deleteMember(Long id) {
         Member member = memberRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found with ID: " + id));
 
-        // Step A: Delete Payments first (Clears constraints)
-        List<Payment> payments = paymentRepo.findByMemberId(id);
-        paymentRepo.deleteAll(payments);
+        // We DO NOT delete payments or attendance anymore. We keep the history!
 
-        // Step B: Delete Attendance first (Clears constraints)
-        List<Attendance> attendance = attendanceRepo.findByMemberId(id);
-        attendanceRepo.deleteAll(attendance);
+        // Just flip the switch
+        member.setActive(false);
 
-        // Step C: Delete the Member Profile
-        memberRepo.delete(member);
-
-        // Step D: Delete the User Login Account
-        if (member.getUser() != null) {
-            userRepo.delete(member.getUser());
-        }
+        memberRepo.save(member);
     }
 
     // 4. UPDATE (PUT - Admin updates Member)
@@ -114,7 +98,7 @@ public class MemberService {
         member.setPhone(memberDetails.getPhone());
         member.setAddress(memberDetails.getAddress());
 
-        // 👇 NEW: Handle Email Update for Admin
+        // Handle Email Update for Admin
         if (memberDetails.getUser() != null && memberDetails.getUser().getEmail() != null) {
             member.getUser().setEmail(memberDetails.getUser().getEmail());
             userRepo.save(member.getUser());
@@ -131,6 +115,12 @@ public class MemberService {
                 case "phone": member.setPhone((String) value); break;
                 case "address": member.setAddress((String) value); break;
                 case "name": member.setName((String) value); break;
+                case "email":
+                    if(member.getUser() != null) {
+                        member.getUser().setEmail((String) value);
+                        userRepo.save(member.getUser());
+                    }
+                    break;
             }
         });
         return memberRepo.save(member);

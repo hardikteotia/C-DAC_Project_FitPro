@@ -8,7 +8,7 @@ import java.time.LocalDate;
 @Entity
 @Data
 public class Member {
-
+    // ... existing fields ...
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -16,20 +16,21 @@ public class Member {
     private String name;
     private String phone;
     private String address;
-
     private LocalDate startDate;
     private LocalDate endDate;
 
-    @OneToOne
-    @JoinColumn(name = "user_id")
-    private AppUser user;
+    // 👇 ADD THIS FIELD
+    private boolean active = true; // Default is ACTIVE
 
     @ManyToOne
-    @JoinColumn(name = "trainer_id")
-    private Trainer trainer;
+    @JoinColumn(name = "user_id")
+    private AppUser user;
 
     @ManyToOne
     @JoinColumn(name = "plan_id")
     private MembershipPlan membershipPlan;
 
+    @ManyToOne
+    @JoinColumn(name = "trainer_id")
+    private Trainer trainer;
 }

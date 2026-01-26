@@ -27,8 +27,9 @@ public class TrainerService {
     @Autowired
     private AppUserRepository userRepo;
 
+    // 1. GET ALL (Active Only) - 👇 UPDATED
     public List<Trainer> getAllTrainers() {
-        return trainerRepo.findAll();
+        return trainerRepo.findByActiveTrue();
     }
 
     public Trainer getTrainerById(Long id) {
@@ -66,7 +67,7 @@ public class TrainerService {
         trainer.setPhone(updatedData.getPhone());
         trainer.setSpecialization(updatedData.getSpecialization());
 
-        // 👇 NEW: Handle Email Update for Admin
+        // Handle Email Update for Admin
         if (updatedData.getUser() != null && updatedData.getUser().getEmail() != null) {
             trainer.getUser().setEmail(updatedData.getUser().getEmail());
             userRepo.save(trainer.getUser());
@@ -75,7 +76,7 @@ public class TrainerService {
         return trainerRepo.save(trainer);
     }
 
-    // 👇 UPDATED PATCH METHOD: Supports Email Update 👇
+    // PATCH (Partial Update)
     public Trainer patchTrainer(Long id, Map<String, Object> updates) {
         Trainer trainer = getTrainerById(id);
 
@@ -90,7 +91,6 @@ public class TrainerService {
                 case "specialization":
                     trainer.setSpecialization((String) value);
                     break;
-                // 👇 HANDLE EMAIL UPDATE
                 case "email":
                     if (trainer.getUser() != null) {
                         trainer.getUser().setEmail((String) value);
@@ -102,8 +102,11 @@ public class TrainerService {
         return trainerRepo.save(trainer);
     }
 
+    // 3. SOFT DELETE (Mark as Inactive) - 👇 UPDATED
     public void deleteTrainer(Long id) {
         Trainer trainer = getTrainerById(id);
+
+        // 1. Unassign members (Safety: Don't leave students stranded)
         List<Member> assignedMembers = trainer.getMembers();
         if (assignedMembers != null) {
             for (Member m : assignedMembers) {
@@ -111,9 +114,10 @@ public class TrainerService {
                 memberRepo.save(m);
             }
         }
-        if (trainer.getUser() != null) {
-            userRepo.delete(trainer.getUser());
-        }
-        trainerRepo.delete(trainer);
+
+        // 2. Mark as Inactive
+        trainer.setActive(false);
+
+        trainerRepo.save(trainer);
     }
 }

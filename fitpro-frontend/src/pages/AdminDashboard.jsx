@@ -1,23 +1,32 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { Row, Col, Card, Table, Button, Badge, Modal, Form } from 'react-bootstrap';
-import { Trash2, DollarSign, CheckSquare, Plus, Users, UserCheck, TrendingUp, Edit, Save } from 'lucide-react';
+import { Trash2, DollarSign, CheckSquare, Plus, Users, UserCheck, TrendingUp, Edit, Save, CreditCard } from 'lucide-react';
 
 const AdminDashboard = () => {
+    // ... existing state ...
     const [stats, setStats] = useState({});
     const [members, setMembers] = useState([]);
     const [trainers, setTrainers] = useState([]);
-    
-    // Add Modal State
+    const [plans, setPlans] = useState([]); // Store Plans
+
+    // Modals
+    const [showPlanModal, setShowPlanModal] = useState(false);
+    const [editingPlan, setEditingPlan] = useState(null); 
+    const [planForm, setPlanForm] = useState({ planName: '', price: '', durationInDays: '' });
+
     const [showTrainerModal, setShowTrainerModal] = useState(false);
     const [showEditTrainerModal, setShowEditTrainerModal] = useState(false);
     const [showEditMemberModal, setShowEditMemberModal] = useState(false);
+    
+    // 👇 NEW: ADD MEMBER MODAL STATE
+    const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [newMember, setNewMember] = useState({
+        name: '', email: '', password: '', phone: '', address: '', planId: '', trainerId: ''
+    });
 
     // Data State
-    const [newTrainer, setNewTrainer] = useState({ 
-        trainerName: '', email: '', password: '', phone: '', specialization: '' 
-    });
-    
+    const [newTrainer, setNewTrainer] = useState({ trainerName: '', email: '', password: '', phone: '', specialization: '' });
     const [editingTrainer, setEditingTrainer] = useState(null);
     const [editingMember, setEditingMember] = useState(null);
 
@@ -25,12 +34,13 @@ const AdminDashboard = () => {
         api.get('/admin/stats').then(res => setStats(res.data)).catch(err => console.error(err));
         api.get('/admin/members').then(res => setMembers(res.data)).catch(err => console.error(err));
         api.get('/admin/trainers').then(res => setTrainers(res.data)).catch(err => console.error(err));
+        api.get('/plans').then(res => setPlans(res.data)).catch(err => console.error(err));
     };
 
     useEffect(() => { fetchAll(); }, []);
 
-    // --- ACTIONS ---
-
+    // ... Existing Handlers (Payment, CheckIn, Delete, Trainer, etc.) ...
+    
     const handlePayment = async (memberId, amount) => {
         if(confirm(`Confirm CASH payment of ₹${amount}?`)) {
             try {
@@ -67,9 +77,9 @@ const AdminDashboard = () => {
             } catch (e) { alert("Delete failed"); }
         }
     };
-
+    
     const handleAddTrainer = async () => {
-        try {
+         try {
             await api.post('/trainers', newTrainer);
             alert("Trainer Added Successfully!");
             setShowTrainerModal(false);
@@ -80,8 +90,23 @@ const AdminDashboard = () => {
         }
     };
 
-    // --- EDIT LOGIC ---
-
+    // 👇 NEW: HANDLE ADD MEMBER
+    const handleAddMember = async () => {
+        if (!newMember.planId) {
+            alert("Please select a Membership Plan");
+            return;
+        }
+        try {
+            await api.post('/members/register', newMember); // Use the register endpoint
+            alert("Member Added Successfully!");
+            setShowAddMemberModal(false);
+            setNewMember({ name: '', email: '', password: '', phone: '', address: '', planId: '', trainerId: '' });
+            fetchAll();
+        } catch (e) {
+            alert("Error adding member: " + (e.response?.data?.message || e.message));
+        }
+    };
+    
     const openEditTrainer = (trainer) => {
         setEditingTrainer({
             id: trainer.id,
@@ -95,7 +120,6 @@ const AdminDashboard = () => {
 
     const handleUpdateTrainer = async () => {
         try {
-            // Nest email inside 'user' object for the backend
             const payload = {
                 trainerName: editingTrainer.trainerName,
                 phone: editingTrainer.phone,
@@ -135,16 +159,69 @@ const AdminDashboard = () => {
         } catch (e) { alert("Update failed"); }
     };
 
+    // --- PLAN HANDLERS ---
+    const handleSavePlan = async () => {
+        try {
+            if (editingPlan) {
+                // Update
+                await api.put(`/plans/${editingPlan.id}`, planForm);
+                alert("Plan Updated!");
+            } else {
+                // Create
+                await api.post('/plans', planForm);
+                alert("Plan Created!");
+            }
+            setShowPlanModal(false);
+            setEditingPlan(null);
+            setPlanForm({ planName: '', price: '', durationInDays: '' });
+            fetchAll();
+        } catch (e) { alert("Operation failed"); }
+    };
+
+    const handleDeletePlan = async (id) => {
+        if(confirm("Delete this plan?")) {
+            try {
+                await api.delete(`/plans/${id}`);
+                alert("Plan Deleted");
+                fetchAll();
+            } catch (e) { alert("Delete failed"); }
+        }
+    };
+
+    const openPlanModal = (plan = null) => {
+        if (plan) {
+            setEditingPlan(plan);
+            setPlanForm({
+                planName: plan.planName,
+                price: plan.price,
+                durationInDays: plan.durationInDays
+            });
+        } else {
+            setEditingPlan(null);
+            setPlanForm({ planName: '', price: '', durationInDays: '' });
+        }
+        setShowPlanModal(true);
+    };
+
     return (
         <div className="fade-in">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h1 className="text-warning fw-bold">Admin Dashboard</h1>
-                <Button variant="gold" onClick={() => setShowTrainerModal(true)}>
-                    <Plus size={20} className="me-2" /> Add Trainer
-                </Button>
+                <div className="d-flex gap-2">
+                    <Button variant="outline-light" onClick={() => openPlanModal(null)}>
+                        <CreditCard size={20} className="me-2" /> Manage Plans
+                    </Button>
+                    {/* 👇 NEW BUTTON: ADD MEMBER */}
+                    <Button variant="outline-warning" onClick={() => setShowAddMemberModal(true)}>
+                        <Plus size={20} className="me-2" /> Add Member
+                    </Button>
+                    <Button variant="gold" onClick={() => setShowTrainerModal(true)}>
+                        <Plus size={20} className="me-2" /> Add Trainer
+                    </Button>
+                </div>
             </div>
 
-            {/* Stats Section */}
+            {/* ... Stats Section ... */}
             <Row className="g-4 mb-5">
                 <Col md={4}>
                     <Card className="p-3 border-primary h-100">
@@ -172,8 +249,9 @@ const AdminDashboard = () => {
                 </Col>
             </Row>
 
-            {/* Member Table */}
-            <Card className="mb-5">
+
+            {/* ... Member Table ... */}
+             <Card className="mb-5">
                 <Card.Header className="bg-transparent text-white fw-bold py-3 border-secondary">Member Management</Card.Header>
                 <Table hover responsive className="mb-0 align-middle">
                     <thead>
@@ -207,7 +285,7 @@ const AdminDashboard = () => {
                 </Table>
             </Card>
 
-            {/* Trainer Table */}
+            {/* ... Trainer Table ... */}
             <Card>
                 <Card.Header className="bg-transparent text-white fw-bold py-3 border-secondary">Trainer Staff</Card.Header>
                 <Table hover responsive className="mb-0 align-middle">
@@ -237,7 +315,7 @@ const AdminDashboard = () => {
                 </Table>
             </Card>
 
-            {/* MODAL 1: Add Trainer */}
+            {/* ... Existing Modals ... */}
             <Modal show={showTrainerModal} onHide={() => setShowTrainerModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Add New Trainer</Modal.Title>
@@ -277,7 +355,6 @@ const AdminDashboard = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* MODAL 2: Edit Trainer */}
             <Modal show={showEditTrainerModal} onHide={() => setShowEditTrainerModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Edit Trainer</Modal.Title>
@@ -314,7 +391,6 @@ const AdminDashboard = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* MODAL 3: Edit Member */}
             <Modal show={showEditMemberModal} onHide={() => setShowEditMemberModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Edit Member</Modal.Title>
@@ -350,6 +426,169 @@ const AdminDashboard = () => {
                     <Button variant="gold" onClick={handleUpdateMember}><Save size={18} className="me-2"/> Update</Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* --- PLAN MODAL --- */}
+            <Modal show={showPlanModal} onHide={() => setShowPlanModal(false)} centered size="lg">
+                <Modal.Header closeButton className="bg-dark border-secondary">
+                    <Modal.Title className="text-white">
+                        {editingPlan ? "Edit Plan" : "Manage Membership Plans"}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="bg-dark text-white">
+                    {!editingPlan && (
+                        <>
+                            <div className="mb-4">
+                                <h5 className="text-warning">Existing Plans</h5>
+                                <Table hover variant="dark" responsive>
+                                    <thead>
+                                        <tr>
+                                            <th>Plan Name</th>
+                                            <th>Price (₹)</th>
+                                            <th>Duration (Days)</th>
+                                            <th className="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {plans.map(plan => (
+                                            <tr key={plan.id}>
+                                                <td>{plan.planName}</td>
+                                                <td>{plan.price}</td>
+                                                <td>{plan.durationInDays}</td>
+                                                <td className="text-end">
+                                                    <Button size="sm" variant="outline-info" className="me-2" onClick={() => openPlanModal(plan)}>
+                                                        <Edit size={14}/>
+                                                    </Button>
+                                                    <Button size="sm" variant="outline-danger" onClick={() => handleDeletePlan(plan.id)}>
+                                                        <Trash2 size={14}/>
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
+                            </div>
+                            <hr className="border-secondary"/>
+                            <h5 className="text-success mt-3">Create New Plan</h5>
+                        </>
+                    )}
+
+                    <Form className="mt-3">
+                        <Row>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Plan Name</Form.Label>
+                                    <Form.Control className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        placeholder="e.g. Diamond Plan"
+                                        value={planForm.planName} onChange={e => setPlanForm({...planForm, planName: e.target.value})} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Price (₹)</Form.Label>
+                                    <Form.Control type="number" className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        placeholder="e.g. 5000"
+                                        value={planForm.price} onChange={e => setPlanForm({...planForm, price: e.target.value})} />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <Row>
+                            <Col md={12}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Duration (Days)</Form.Label>
+                                    <Form.Control type="number" className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        placeholder="e.g. 365"
+                                        value={planForm.durationInDays} 
+                                        onChange={e => setPlanForm({...planForm, durationInDays: e.target.value})} />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer className="bg-dark border-secondary">
+                     {editingPlan && <Button variant="secondary" onClick={() => openPlanModal(null)}>Back to List</Button>}
+                    <Button variant="secondary" onClick={() => setShowPlanModal(false)}>Close</Button>
+                    <Button variant="gold" onClick={handleSavePlan}>
+                        {editingPlan ? "Update Plan" : "Create Plan"}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* 👇 NEW: ADD MEMBER MODAL */}
+            <Modal show={showAddMemberModal} onHide={() => setShowAddMemberModal(false)} centered>
+                <Modal.Header closeButton className="bg-dark border-secondary">
+                    <Modal.Title className="text-white">Add New Member</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="bg-dark text-white">
+                    <Form>
+                        <Row>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Name</Form.Label>
+                                    <Form.Control className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        value={newMember.name} onChange={e => setNewMember({...newMember, name: e.target.value})} />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Phone</Form.Label>
+                                    <Form.Control className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        value={newMember.phone} onChange={e => setNewMember({...newMember, phone: e.target.value})} />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Email</Form.Label>
+                            <Form.Control type="email" className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                value={newMember.email} onChange={e => setNewMember({...newMember, email: e.target.value})} />
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Password</Form.Label>
+                            <Form.Control type="password" className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                value={newMember.password} onChange={e => setNewMember({...newMember, password: e.target.value})} />
+                        </Form.Group>
+
+                        <Row>
+                             <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Select Plan</Form.Label>
+                                    <Form.Select className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        value={newMember.planId} onChange={e => setNewMember({...newMember, planId: e.target.value})}>
+                                        <option value="">-- Choose Plan --</option>
+                                        {plans.map(p => (
+                                            <option key={p.id} value={p.id}>{p.planName} (₹{p.price})</option>
+                                        ))}
+                                    </Form.Select>
+                                </Form.Group>
+                             </Col>
+                             <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Assign Trainer (Optional)</Form.Label>
+                                    <Form.Select className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                        value={newMember.trainerId} onChange={e => setNewMember({...newMember, trainerId: e.target.value})}>
+                                        <option value="">-- No Trainer --</option>
+                                        {trainers.map(t => (
+                                            <option key={t.id} value={t.id}>{t.trainerName}</option>
+                                        ))}
+                                    </Form.Select>
+                                </Form.Group>
+                             </Col>
+                        </Row>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Address</Form.Label>
+                            <Form.Control className="bg-secondary bg-opacity-10 border-secondary text-white"
+                                value={newMember.address} onChange={e => setNewMember({...newMember, address: e.target.value})} />
+                        </Form.Group>
+                    </Form>
+                </Modal.Body>
+                <Modal.Footer className="bg-dark border-secondary">
+                    <Button variant="secondary" onClick={() => setShowAddMemberModal(false)}>Cancel</Button>
+                    <Button variant="gold" onClick={handleAddMember}>Save Member</Button>
+                </Modal.Footer>
+            </Modal>
+
         </div>
     );
 };
