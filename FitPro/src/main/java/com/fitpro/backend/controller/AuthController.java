@@ -1,6 +1,7 @@
 package com.fitpro.backend.controller;
 
 import com.fitpro.backend.security.JwtUtil;
+import com.fitpro.backend.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -25,6 +26,9 @@ public class AuthController {
 
     @Autowired
     private UserDetailsService userDetailsService;
+
+    @Autowired
+    private     AuthService authService;
 
     // ❌ MAKE SURE NO EmailService OR MicroserviceLogger IS HERE ❌
 
@@ -52,6 +56,13 @@ public class AuthController {
         response.put("role", role);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody AuthenticationRequest request) {
+        // Default role is MEMBER if not specified
+        authService.register(request.getEmail(), request.getPassword(), "MEMBER");
+        return ResponseEntity.ok("User registered successfully");
     }
 }
 

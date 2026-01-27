@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { Container, Card, Row, Col, Button, Badge, Spinner, Modal, Form } from 'react-bootstrap';
-import { CreditCard, User, Calendar, CheckCircle, Lock } from 'lucide-react';
+import { Container, Card, Row, Col, Button, Badge, Spinner, Modal } from 'react-bootstrap';
+import { CreditCard, User, Calendar, CheckCircle } from 'lucide-react';
 
 const MemberDashboard = () => {
     const { user } = useAuth();
@@ -11,10 +11,8 @@ const MemberDashboard = () => {
     const [attendance, setAttendance] = useState([]);
 
     // Payment State
-    const [showPayModal, setShowPayModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [processing, setProcessing] = useState(false);
-    const [paymentSuccess, setPaymentSuccess] = useState(false);
-    const [cardData, setCardData] = useState({ number: '', expiry: '', cvv: '', name: '' });
 
     const fetchMemberData = async () => {
         try {
@@ -35,33 +33,88 @@ const MemberDashboard = () => {
 
     useEffect(() => { if (user) fetchMemberData(); }, [user]);
 
-    // ... Payment Handlers (Keep same as before) ...
-    const handlePayment = async (e) => {
-        e.preventDefault();
-        setProcessing(true);
-        setTimeout(async () => {
-            try {
-                const amount = member.membershipPlan?.price || 1000;
-                await api.post(`/payments?memberId=${member.id}&amount=${amount}&method=Credit Card`);
-                setPaymentSuccess(true);
-                setProcessing(false);
-                setTimeout(() => {
-                    setShowPayModal(false);
-                    setPaymentSuccess(false);
-                    setCardData({ number: '', expiry: '', cvv: '', name: '' });
-                    fetchMemberData(); 
-                }, 2000);
-            } catch (err) {
-                alert("Payment Failed: " + err.message);
-                setProcessing(false);
-            }
-        }, 2000); 
+    // 👇 HELPER: Load Razorpay SDK
+    const loadRazorpay = () => {
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
     };
 
-    const handleCardNumber = (e) => {
-        const val = e.target.value.replace(/\D/g, '').substring(0, 16);
-        const formatted = val.match(/.{1,4}/g)?.join(' ') || val;
-        setCardData({ ...cardData, number: formatted });
+    // 👇 REAL RAZORPAY PAYMENT HANDLER
+    const handlePayment = async () => {
+        const isLoaded = await loadRazorpay();
+        if (!isLoaded) {
+            alert('Razorpay SDK failed to load. Are you online?');
+            return;
+        }
+
+        setProcessing(true);
+
+        try {
+            // 1. Create Order on Backend
+            const amount = member.membershipPlan?.price || 1000;
+            const orderRes = await api.post('/payments/create-order', { amount: amount });
+            
+            // ✅ FIX: Removed JSON.parse(). Use the data directly.
+            const orderData = orderRes.data;
+
+            // 2. Open Razorpay Window
+            const options = {
+                key: "rzp_test_BLuYvjyR58WQhz", // ⚠️ MAKE SURE THIS IS CORRECT
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: "FitPro Gym",
+                description: "Membership Renewal",
+                order_id: orderData.id, 
+                handler: async function (response) {
+                    // 3. Verify Payment on Success
+                    try {
+                        await api.post('/payments/verify', {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                            memberId: member.id,
+                            amount: amount
+                        });
+                        
+                        setProcessing(false);
+                        setShowSuccessModal(true); 
+                        
+                        setTimeout(() => {
+                            setShowSuccessModal(false);
+                            fetchMemberData(); 
+                        }, 2500);
+
+                    } catch (err) {
+                        alert("Payment Verification Failed. Contact Admin.");
+                        setProcessing(false);
+                    }
+                },
+                prefill: {
+                    name: member.name,
+                    email: member.user?.email,
+                    contact: member.phone
+                },
+                theme: { color: "#FFC107" },
+                modal: {
+                    ondismiss: function() {
+                        setProcessing(false);
+                    }
+                }
+            };
+
+            const paymentObject = new window.Razorpay(options);
+            paymentObject.open();
+
+        } catch (err) {
+            console.error("Payment Error:", err);
+            alert("Could not initiate payment. Server error?");
+            setProcessing(false);
+        }
     };
 
     if (loading) return <div className="text-center mt-5 text-white"><Spinner animation="border" variant="warning"/></div>;
@@ -70,14 +123,12 @@ const MemberDashboard = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const isCheckedInToday = attendance.some(a => a.date === todayStr);
 
-    // 👇 FILTER DUPLICATES & SORT (Shows unique dates only)
     const uniqueAttendance = [...new Map(attendance.map(item => [item.date, item])).values()]
-                             .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort Newest First
-                             .slice(0, 5); // Take top 5
+                             .sort((a, b) => new Date(b.date) - new Date(a.date)) 
+                             .slice(0, 5); 
 
     return (
         <div className="fade-in">
-            {/* 👇 CUSTOM SCROLLBAR STYLE */}
             <style>{`
                 .custom-scroll::-webkit-scrollbar { width: 6px; }
                 .custom-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 4px; }
@@ -97,7 +148,6 @@ const MemberDashboard = () => {
                 </div>
 
                 <Row className="g-4">
-                    {/* Membership Card */}
                     <Col md={4}>
                         <Card className="bg-dark border-secondary text-white h-100 shadow-lg">
                             <Card.Header className="bg-transparent border-secondary py-3">
@@ -108,15 +158,21 @@ const MemberDashboard = () => {
                                     <small className="text-secondary text-uppercase fw-bold">Plan</small>
                                     <h3 className="fw-bold text-white">{member.membershipPlan?.planName || "No Plan"}</h3>
                                 </div>
-                                <div className="d-flex justify-content-between">
-                                    <div><small className="text-secondary fw-bold">Expires</small><p className={member.endDate ? "text-white" : "text-danger"}>{member.endDate || "Expired"}</p></div>
-                                    {!member.endDate && <Button size="sm" variant="gold" onClick={() => setShowPayModal(true)}>Renew</Button>}
+                                <div className="d-flex justify-content-between align-items-end">
+                                    <div>
+                                        <small className="text-secondary fw-bold">Expires</small>
+                                        <p className={member.endDate ? "text-white m-0" : "text-danger m-0"}>{member.endDate || "Expired"}</p>
+                                    </div>
+                                    {!member.endDate && (
+                                        <Button size="sm" variant="gold" onClick={handlePayment} disabled={processing}>
+                                            {processing ? <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" /> : "Renew Now"}
+                                        </Button>
+                                    )}
                                 </div>
                             </Card.Body>
                         </Card>
                     </Col>
 
-                    {/* Trainer Card */}
                     <Col md={4}>
                         <Card className="bg-dark border-secondary text-white h-100 shadow-lg">
                             <Card.Header className="bg-transparent border-secondary py-3">
@@ -134,7 +190,6 @@ const MemberDashboard = () => {
                         </Card>
                     </Col>
 
-                    {/* 👇 ATTENDANCE CARD (UPDATED) */}
                     <Col md={4}>
                         <Card className="bg-dark border-secondary text-white h-100 shadow-lg">
                             <Card.Header className="bg-transparent border-secondary py-3 d-flex justify-content-between">
@@ -166,24 +221,12 @@ const MemberDashboard = () => {
                     </Col>
                 </Row>
 
-                {/* Mock Payment Modal */}
-                <Modal show={showPayModal} onHide={() => !processing && setShowPayModal(false)} centered backdrop="static">
-                    <Modal.Header closeButton={!processing} className="bg-light border-0">
-                        <Modal.Title className="fw-bold d-flex align-items-center gap-2"><Lock size={20} className="text-success"/> Secure Payment</Modal.Title>
-                    </Modal.Header>
-                    <Modal.Body className="bg-light p-4">
-                        {paymentSuccess ? (
-                            <div className="text-center py-4"><CheckCircle size={60} className="text-success mb-3"/><h4 className="fw-bold text-success">Payment Successful!</h4></div>
-                        ) : processing ? (
-                            <div className="text-center py-5"><Spinner animation="border" variant="primary"/><h5 className="mt-3">Processing...</h5></div>
-                        ) : (
-                            <Form onSubmit={handlePayment}>
-                                <div className="d-flex justify-content-between mb-4"><h5 className="fw-bold">Total</h5><h4 className="fw-bold">₹{member.membershipPlan?.price || 1000}</h4></div>
-                                <Form.Group className="mb-3"><Form.Label className="small fw-bold text-secondary">CARD NUMBER</Form.Label><Form.Control value={cardData.number} onChange={handleCardNumber} maxLength="19" required/></Form.Group>
-                                <Row><Col><Form.Control placeholder="MM/YY" required/></Col><Col><Form.Control placeholder="CVV" required/></Col></Row>
-                                <Button variant="dark" type="submit" className="w-100 mt-4 fw-bold">Pay Now</Button>
-                            </Form>
-                        )}
+                <Modal show={showSuccessModal} onHide={() => setShowSuccessModal(false)} centered>
+                    <Modal.Body className="bg-light p-5 text-center rounded">
+                        <CheckCircle size={80} className="text-success mb-3" />
+                        <h2 className="fw-bold text-success">Payment Successful!</h2>
+                        <p className="text-secondary">Your membership has been renewed.</p>
+                        <p className="small text-muted">Refreshing dashboard...</p>
                     </Modal.Body>
                 </Modal>
             </Container>

@@ -27,7 +27,7 @@ public class TrainerService {
     @Autowired
     private AppUserRepository userRepo;
 
-    // 1. GET ALL (Active Only) - 👇 UPDATED
+    // 1. GET ALL (Active Only)
     public List<Trainer> getAllTrainers() {
         return trainerRepo.findByActiveTrue();
     }
@@ -67,7 +67,6 @@ public class TrainerService {
         trainer.setPhone(updatedData.getPhone());
         trainer.setSpecialization(updatedData.getSpecialization());
 
-        // Handle Email Update for Admin
         if (updatedData.getUser() != null && updatedData.getUser().getEmail() != null) {
             trainer.getUser().setEmail(updatedData.getUser().getEmail());
             userRepo.save(trainer.getUser());
@@ -102,11 +101,10 @@ public class TrainerService {
         return trainerRepo.save(trainer);
     }
 
-    // 3. SOFT DELETE (Mark as Inactive) - 👇 UPDATED
+    // 3. SOFT DELETE
     public void deleteTrainer(Long id) {
         Trainer trainer = getTrainerById(id);
 
-        // 1. Unassign members (Safety: Don't leave students stranded)
         List<Member> assignedMembers = trainer.getMembers();
         if (assignedMembers != null) {
             for (Member m : assignedMembers) {
@@ -114,10 +112,21 @@ public class TrainerService {
                 memberRepo.save(m);
             }
         }
-
-        // 2. Mark as Inactive
         trainer.setActive(false);
-
         trainerRepo.save(trainer);
+    }
+
+    // 👇 NEW METHOD: Get Clients for the Logged-in Trainer
+    public List<Member> getMyClients(String email) {
+        // 1. Find User by Email (from Login Token)
+        AppUser user = userRepo.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        // 2. Find Trainer Profile linked to this User
+        Trainer trainer = trainerRepo.findByUser(user)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Trainer profile not found"));
+
+        // 3. Return their Students
+        return trainer.getMembers();
     }
 }

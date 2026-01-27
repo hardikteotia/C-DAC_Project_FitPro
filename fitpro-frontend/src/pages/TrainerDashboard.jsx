@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { Container, Card, Row, Col, Table, Badge, Spinner, Alert } from 'react-bootstrap';
-import { Users, Phone, Mail, Award, Dumbbell } from 'lucide-react'; // Added Dumbbell icon
+import { Users, Phone, Mail, Award, Dumbbell } from 'lucide-react';
 
 const TrainerDashboard = () => {
     const { user } = useAuth();
@@ -11,33 +11,46 @@ const TrainerDashboard = () => {
     const [debugMsg, setDebugMsg] = useState(null);
 
     useEffect(() => {
-        const fetchTrainerProfile = async () => {
+        const fetchDashboardData = async () => {
             try {
-                // 1. Fetch ALL trainers
-                const res = await api.get('/trainers');
-                const allTrainers = res.data;
+                // 1. Fetch Basic Profile Info (Name, Phone, etc.)
+                const resTrainers = await api.get('/trainers');
+                const allTrainers = resTrainers.data;
 
-                // 2. Find MY profile (Using LOOSE EQUALITY '==' to match String vs Number)
+                // Find "Me" in the list
                 const myProfile = allTrainers.find(t => 
                     (t.user && t.user.id == user.id) || 
                     (t.user && t.user.email === user.email)
                 );
                 
                 if (myProfile) {
-                    setTrainer(myProfile);
+                    // 2. 👇 FETCH CLIENTS (This calls the new endpoint!)
+                    try {
+                        const resClients = await api.get('/trainers/dashboard/clients');
+                        
+                        // Merge the Profile info + The Client List
+                        setTrainer({
+                            ...myProfile,
+                            members: resClients.data 
+                        });
+                    } catch (clientErr) {
+                        console.error("Could not fetch clients:", clientErr);
+                        // Fallback: Show profile but empty client list
+                        setTrainer({ ...myProfile, members: [] });
+                    }
                 } else {
                     setDebugMsg("Could not link your Login ID to a Trainer Profile.");
                 }
 
             } catch (err) {
-                console.error("Error fetching trainer:", err);
+                console.error("Error fetching trainer data:", err);
                 setDebugMsg("Server Error: " + err.message);
             } finally {
                 setLoading(false);
             }
         };
 
-        if (user) fetchTrainerProfile();
+        if (user) fetchDashboardData();
     }, [user]);
 
     if (loading) return (
@@ -74,7 +87,6 @@ const TrainerDashboard = () => {
                                 </div>
                                 <div>
                                     <h2 className="mb-0 fw-bold">{trainer.members ? trainer.members.length : 0}</h2>
-                                    {/* RENAMED: Students -> Active Clients */}
                                     <span className="text-secondary">Active Clients</span>
                                 </div>
                             </Card.Body>
@@ -125,7 +137,7 @@ const TrainerDashboard = () => {
                                         </td>
                                         <td>
                                             <div className="d-flex flex-column">
-                                                <small className="text-light">{client.user?.email}</small>
+                                                <small className="text-light">{client.user?.email || 'N/A'}</small>
                                                 <small className="text-secondary" style={{fontSize: '0.75rem'}}>{client.phone}</small>
                                             </div>
                                         </td>

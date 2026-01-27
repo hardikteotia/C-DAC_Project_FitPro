@@ -12,7 +12,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder; // 👈 IMPORTANT
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -33,36 +33,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        System.out.println("--------------------------------------------");
-        System.out.println(">>> SECURITY CONFIG IS LOADING SUCCESSFULLY <<<");
-        System.out.println("--------------------------------------------");
-
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // Public Endpoints
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Keep CORS fix
                         .requestMatchers("/api/auth/**", "/api/public/**", "/api/members/register").permitAll()
-
-                        // Admin General
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-
-                        // --- TRAINER RULES ---
-                        .requestMatchers(HttpMethod.GET, "/api/trainers/**").hasAnyAuthority("ADMIN", "TRAINER")
-                        .requestMatchers(HttpMethod.PUT, "/api/trainers/**").hasAuthority("TRAINER")
-                        .requestMatchers(HttpMethod.PATCH, "/api/trainers/**").hasAuthority("TRAINER") // Allow PATCH for Trainers
-                        .requestMatchers(HttpMethod.POST, "/api/trainers/**").hasAuthority("ADMIN")
-
-                        // Member General
+                        .requestMatchers("/api/trainers/**").hasAnyAuthority("ADMIN", "TRAINER")
                         .requestMatchers("/api/members/**").hasAnyAuthority("ADMIN", "MEMBER")
-
-                        // Payment & Attendance Rules
-                        .requestMatchers(HttpMethod.POST, "/api/payments/**").hasAnyAuthority("ADMIN", "MEMBER")
-                        .requestMatchers(HttpMethod.POST, "/api/attendance/**").hasAuthority("ADMIN")
-
-                        // View History
-                        .requestMatchers(HttpMethod.GET, "/api/payments/**", "/api/attendance/**").hasAnyAuthority("ADMIN", "MEMBER")
-
+                        .requestMatchers("/api/payments/**", "/api/attendance/**").hasAnyAuthority("ADMIN", "MEMBER")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -72,6 +52,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    // 👇 REVERTED TO PLAIN TEXT ENCODER
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
@@ -93,14 +74,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
-
-        // 👇 ADDED "PATCH" HERE 👇
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

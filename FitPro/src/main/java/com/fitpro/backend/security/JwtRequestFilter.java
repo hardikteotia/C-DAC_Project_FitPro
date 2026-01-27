@@ -12,7 +12,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import java.io.IOException;
 
 @Component
@@ -23,6 +22,25 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    // 👇 THIS METHOD STOPS THE 403 ERROR
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+
+        // Skip filter for: Login, Register, and Public APIs
+        boolean isAuthPath = path.startsWith("/api/auth/") || path.startsWith("/api/public/");
+
+        // Skip filter for: OPTIONS requests (Fixes CORS 403 issues)
+        boolean isOptions = "OPTIONS".equalsIgnoreCase(request.getMethod());
+
+        if (isAuthPath || isOptions) {
+            System.out.println("⏩ Skipping JWT Filter for: " + path);
+            return true; // DO NOT RUN FILTER
+        }
+
+        return false; // RUN FILTER
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -38,7 +56,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extractUsername(jwt);
             } catch (Exception e) {
-                // Token invalid/expired
+                System.out.println("❌ JWT Token Error: " + e.getMessage());
             }
         }
 
