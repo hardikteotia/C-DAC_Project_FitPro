@@ -33,7 +33,7 @@ public class AuthService {
         return userRepo.save(user);
     }
 
-    // 👇 1. GENERATE RESET TOKEN (For Forgot Password)
+    //1. GENERATE RESET TOKEN (For Forgot Password)
     public void generateResetToken(String email) {
         AppUser user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -51,7 +51,7 @@ public class AuthService {
         System.out.println("📧 [EMAIL SIMULATION] Reset Link for " + email + ": " + resetLink);
     }
 
-    // 👇 2. PERFORM PASSWORD RESET
+    // 2. PERFORM PASSWORD RESET
     public void resetPassword(String token, String newPassword) {
         // You need to ensure 'findByResetToken' exists in AppUserRepository
         AppUser user = userRepo.findByResetToken(token)
