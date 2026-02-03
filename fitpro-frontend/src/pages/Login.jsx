@@ -1,31 +1,52 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom'; // 👈 Added Link here
-import { Form, Button, Card, Container } from 'react-bootstrap';
+import { useNavigate, Link } from 'react-router-dom';
+import { Form, Button, Card, Container, Alert } from 'react-bootstrap'; // 👈 Added Alert
 import { Eye, EyeOff } from 'lucide-react';
 
 const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
     const [creds, setCreds] = useState({ email: '', password: '' });
-    
-    // State for toggling password visibility
     const [showPassword, setShowPassword] = useState(false);
+    
+    // 👇 NEW: State to store validation errors
+    const [errors, setErrors] = useState({});
+
+    // 👇 NEW: Validation Logic
+    const validate = () => {
+        let newErrors = {};
+        
+        // 1. Email Validation (Must contain '@')
+        if (!creds.email) {
+            newErrors.email = "Email is required";
+        } else if (!creds.email.includes('@')) {
+            newErrors.email = "Invalid email: Must contain '@'";
+        }
+
+        // 2. Password Validation (Optional: Check length)
+        if (!creds.password) {
+            newErrors.password = "Password is required";
+        }
+
+        setErrors(newErrors);
+        // Return TRUE if no errors
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // 👇 Run validation before submitting
+        if (!validate()) return; 
+
         const result = await login(creds.email, creds.password);
         
         if (result.success) {
             const storedUser = JSON.parse(localStorage.getItem('fitpro_user'));
-            
-            if (storedUser.role === 'ADMIN') {
-                navigate('/admin');
-            } else if (storedUser.role === 'TRAINER') {
-                navigate('/trainer');
-            } else {
-                navigate('/dashboard');
-            }
+            if (storedUser.role === 'ADMIN') navigate('/admin');
+            else if (storedUser.role === 'TRAINER') navigate('/trainer');
+            else navigate('/dashboard');
         } else {
             alert(result.message);
         }
@@ -39,30 +60,34 @@ const Login = () => {
                     <p className="text-center text-secondary mb-4">Access your dashboard</p>
                     
                     <Form onSubmit={handleSubmit}>
+                        {/* Email Input */}
                         <Form.Group className="mb-3">
                             <Form.Control 
                                 type="email" 
                                 placeholder="Email" 
-                                required 
-                                className="bg-dark text-white border-secondary"
+                                className={`bg-dark text-white border-secondary ${errors.email ? 'is-invalid' : ''}`} // 👈 Highlight red on error
                                 value={creds.email}
-                                onChange={e => setCreds({...creds, email: e.target.value})} 
+                                onChange={e => {
+                                    setCreds({...creds, email: e.target.value});
+                                    if(errors.email) setErrors({...errors, email: null}); // Clear error when typing
+                                }} 
                             />
+                            {/* 👇 Show Error Message */}
+                            <Form.Control.Feedback type="invalid">
+                                {errors.email}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
-                        {/* Password Group */}
-                        <Form.Group className="mb-2 position-relative"> {/* Changed mb-4 to mb-2 for spacing */}
+                        {/* Password Input */}
+                        <Form.Group className="mb-2 position-relative">
                             <Form.Control 
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Password" 
-                                required 
-                                className="bg-dark text-white border-secondary"
+                                className={`bg-dark text-white border-secondary ${errors.password ? 'is-invalid' : ''}`}
                                 style={{ paddingRight: '45px' }}
                                 value={creds.password}
                                 onChange={e => setCreds({...creds, password: e.target.value})} 
                             />
-                            
-                            {/* Eye Icon Button */}
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
@@ -71,15 +96,13 @@ const Login = () => {
                             >
                                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                             </button>
+                            <Form.Control.Feedback type="invalid">
+                                {errors.password}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
-                        {/* 👇 ADDED FORGOT PASSWORD LINK HERE */}
                         <div className="d-flex justify-content-end mb-4">
-                            <Link 
-                                to="/forgot-password" 
-                                className="text-decoration-none small"
-                                style={{ color: '#ffc107' }} // Gold color
-                            >
+                            <Link to="/forgot-password" style={{ color: '#ffc107', textDecoration: 'none', fontSize: '0.9rem' }}>
                                 Forgot Password?
                             </Link>
                         </div>
