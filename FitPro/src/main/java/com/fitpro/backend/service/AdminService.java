@@ -22,9 +22,7 @@ public class AdminService {
     @Autowired
     private PaymentRepository paymentRepo;
 
-    // ---------------------------------------------------
-    // 1. PLAN MANAGEMENT (Only Admin does this)
-    // ---------------------------------------------------
+    //PLAN MANAGEMENT (Only Admin does this)
 
     public MembershipPlan createPlan(MembershipPlan plan) {
         // 1. Check for duplicate
@@ -52,9 +50,7 @@ public class AdminService {
         planRepo.deleteById(id);
     }
 
-    // ---------------------------------------------------
-    // 2. DASHBOARD STATS (The "CEO View")
-    // ---------------------------------------------------
+    //DASHBOARD STATS (The "CEO View")
     public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
 

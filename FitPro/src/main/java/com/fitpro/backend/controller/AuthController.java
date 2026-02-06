@@ -63,7 +63,7 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully");
     }
 
-    // 👇 NEW: Forgot Password Endpoint
+    //Forgot Password Endpoint
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
         try {
@@ -74,7 +74,7 @@ public class AuthController {
         }
     }
 
-    // 👇 NEW: Reset Password Endpoint
+    //Reset Password Endpoint
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         try {

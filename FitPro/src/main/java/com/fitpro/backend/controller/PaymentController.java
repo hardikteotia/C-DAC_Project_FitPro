@@ -23,18 +23,17 @@ public class PaymentController {
     @Autowired
     private PaymentService paymentService;
 
-    // 👇 Inject Razorpay Keys from application.properties
+    //Razorpay Keys from application.properties
     @Value("${razorpay.api.key}")
     private String apiKey;
 
     @Value("${razorpay.api.secret}")
     private String apiSecret;
 
-    // -------------------------------------------------------------------------
-    // EXISTING METHODS (Manual Cash Payments)
-    // -------------------------------------------------------------------------
 
-    // 1. ADMIN RECORDS PAYMENT (Manual)
+    // EXISTING METHODS (Manual Cash Payments)
+
+    //ADMIN RECORDS PAYMENT (Manual)
     @PostMapping
     public Payment recordPayment(@RequestParam Long memberId,
                                  @RequestParam Double amount,
@@ -42,17 +41,17 @@ public class PaymentController {
         return paymentService.recordPayment(memberId, amount, method);
     }
 
-    // 2. VIEW HISTORY
+    //VIEW HISTORY
     @GetMapping("/{memberId}")
     public List<Payment> getHistory(@PathVariable Long memberId) {
         return paymentService.getPaymentHistory(memberId);
     }
 
-    // -------------------------------------------------------------------------
-    // NEW RAZORPAY METHODS (Online Payments)
-    // -------------------------------------------------------------------------
 
-    // 3. CREATE RAZORPAY ORDER (Frontend calls this before opening popup)
+    //RAZORPAY METHODS (Online Payments)
+
+
+    //CREATE RAZORPAY ORDER (Frontend calls this before opening popup)
     @PostMapping("/create-order")
     public ResponseEntity<?> createOrder(@RequestBody Map<String, Object> data) {
         try {
@@ -76,7 +75,7 @@ public class PaymentController {
         }
     }
 
-    // 4. VERIFY PAYMENT (Called after user pays successfully)
+    //VERIFY PAYMENT (Called after user pays successfully)
     @PostMapping("/verify")
     public ResponseEntity<?> verifyPayment(@RequestBody Map<String, Object> data) {
         try {
@@ -97,7 +96,7 @@ public class PaymentController {
             boolean isValid = Utils.verifyPaymentSignature(options, apiSecret);
 
             if (isValid) {
-                // ✅ SUCCESS! Save to Database automatically
+                //Save to Database automatically
                 paymentService.recordPayment(memberId, amount, "Razorpay (Online)");
                 return ResponseEntity.ok("Payment Verified and Saved");
             } else {

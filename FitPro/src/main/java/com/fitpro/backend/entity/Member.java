@@ -19,8 +19,8 @@ public class Member {
     private LocalDate startDate;
     private LocalDate endDate;
 
-    // 👇 ADD THIS FIELD
-    private boolean active = true; // Default is ACTIVE
+
+    private boolean active = true; // Default is ACTIVE cuz they joined and if paid
 
     @ManyToOne
     @JoinColumn(name = "user_id")

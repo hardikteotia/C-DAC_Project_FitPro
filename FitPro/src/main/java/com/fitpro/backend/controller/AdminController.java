@@ -70,7 +70,7 @@ public class AdminController {
         return ResponseEntity.ok("Trainer deleted successfully");
     }
 
-    // 👇 NEW: Update Trainer (Fixes the error!)
+    //Update Trainer (Fixes the error!)
     @PutMapping("/trainers/{id}")
     public ResponseEntity<Trainer> updateTrainer(@PathVariable Long id, @RequestBody Trainer trainer) {
         return ResponseEntity.ok(trainerService.updateTrainer(id, trainer));

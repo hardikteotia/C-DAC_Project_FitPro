@@ -23,7 +23,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
-    // 👇 THIS METHOD STOPS THE 403 ERROR
+    //THIS METHOD STOPS THE 403 ERROR
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
@@ -35,7 +35,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         boolean isOptions = "OPTIONS".equalsIgnoreCase(request.getMethod());
 
         if (isAuthPath || isOptions) {
-            System.out.println("⏩ Skipping JWT Filter for: " + path);
+            System.out.println("-----> Skipping JWT Filter for: " + path);
             return true; // DO NOT RUN FILTER
         }
 
@@ -56,7 +56,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extractUsername(jwt);
             } catch (Exception e) {
-                System.out.println("❌ JWT Token Error: " + e.getMessage());
+                System.out.println("-----> JWT Token Error: " + e.getMessage());
             }
         }
 

@@ -31,7 +31,7 @@ public class MembershipPlanController {
     @PutMapping("/{id}")
     public ResponseEntity<MembershipPlan> updatePlan(@PathVariable Long id, @RequestBody MembershipPlan planDetails) {
         return planRepo.findById(id).map(plan -> {
-            // 👇 Updated to match your Entity fields exactly
+            //Updated to match Entity fields exactly
             plan.setPlanName(planDetails.getPlanName());
             plan.setPrice(planDetails.getPrice());
             plan.setDurationInDays(planDetails.getDurationInDays());

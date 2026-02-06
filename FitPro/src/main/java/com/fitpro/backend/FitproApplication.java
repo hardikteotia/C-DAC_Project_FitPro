@@ -1,4 +1,4 @@
-package com.fitpro.backend; // ⚠️ Confirm this matches your package name at the top of the file
+package com.fitpro.backend;
 
 import com.fitpro.backend.entity.AppUser;
 import com.fitpro.backend.repository.AppUserRepository;
