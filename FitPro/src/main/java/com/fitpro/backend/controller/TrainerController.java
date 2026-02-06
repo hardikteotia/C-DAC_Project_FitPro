@@ -19,7 +19,7 @@ public class TrainerController {
     @Autowired
     private TrainerService trainerService;
 
-    // 👇 NEW ENDPOINT: Get Clients for the Logged-in Trainer
+    //Get Clients for the Logged-in Trainer
     @GetMapping("/dashboard/clients")
     public ResponseEntity<List<Member>> getMyClients(Principal principal) {
         // Principal holds the email of the person who is currently logged in
@@ -27,31 +27,31 @@ public class TrainerController {
         return ResponseEntity.ok(clients);
     }
 
-    // 1. GET ALL
+    //GET ALL
     @GetMapping
     public List<Trainer> getAllTrainers() {
         return trainerService.getAllTrainers();
     }
 
-    // 2. GET BY ID
+    // GET BY ID
     @GetMapping("/{id}")
     public Trainer getTrainerById(@PathVariable Long id) {
         return trainerService.getTrainerById(id);
     }
 
-    // 3. UPDATE SELF
+    //UPDATE SELF
     @PutMapping("/{id}")
     public Trainer updateTrainer(@PathVariable Long id, @RequestBody Trainer trainer) {
         return trainerService.updateTrainer(id, trainer);
     }
 
-    // 4. PATCH SELF
+    //PATCH SELF
     @PatchMapping("/{id}")
     public Trainer patchTrainer(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
         return trainerService.patchTrainer(id, updates);
     }
 
-    // 5. POST (Create New Trainer)
+    //POST (Create New Trainer)
     @PostMapping
     public Trainer createTrainer(@RequestBody Map<String, Object> trainerData) {
         return trainerService.createTrainer(trainerData);

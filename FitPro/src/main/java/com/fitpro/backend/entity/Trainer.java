@@ -19,8 +19,7 @@ public class Trainer {
     private String phone;
     private String specialization;
 
-    // 👇 ADD THIS FIELD
-    private boolean active = true; // Default is ACTIVE
+    private boolean active = true; // Default is ACTIVE cuz they joined and if paid
 
     @OneToOne
     @JoinColumn(name = "user_id")

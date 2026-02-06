@@ -52,7 +52,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 👇 REVERTED TO PLAIN TEXT ENCODER
+    //REVERTED TO PLAIN TEXT ENCODER
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
