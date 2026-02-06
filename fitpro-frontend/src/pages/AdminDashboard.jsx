@@ -4,11 +4,13 @@ import { Row, Col, Card, Table, Button, Badge, Modal, Form } from 'react-bootstr
 import { Trash2, DollarSign, CheckSquare, Plus, Users, UserCheck, TrendingUp, Edit, Save, CreditCard } from 'lucide-react';
 
 const AdminDashboard = () => {
-    // ... existing state ...
+    // --------------------------------------------------------
+    // STATE MANAGEMENT
+    // --------------------------------------------------------
     const [stats, setStats] = useState({});
     const [members, setMembers] = useState([]);
     const [trainers, setTrainers] = useState([]);
-    const [plans, setPlans] = useState([]); // Store Plans
+    const [plans, setPlans] = useState([]); 
 
     // Modals
     const [showPlanModal, setShowPlanModal] = useState(false);
@@ -19,38 +21,79 @@ const AdminDashboard = () => {
     const [showEditTrainerModal, setShowEditTrainerModal] = useState(false);
     const [showEditMemberModal, setShowEditMemberModal] = useState(false);
     
-    // 👇 NEW: ADD MEMBER MODAL STATE
+    // Add Member Modal State
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [newMember, setNewMember] = useState({
         name: '', email: '', password: '', phone: '', address: '', planId: '', trainerId: ''
     });
 
-    // Data State
+    // Trainer/Member Data State
     const [newTrainer, setNewTrainer] = useState({ trainerName: '', email: '', password: '', phone: '', specialization: '' });
     const [editingTrainer, setEditingTrainer] = useState(null);
     const [editingMember, setEditingMember] = useState(null);
 
-    const fetchAll = () => {
-        api.get('/admin/stats').then(res => setStats(res.data)).catch(err => console.error(err));
-        api.get('/admin/members').then(res => setMembers(res.data)).catch(err => console.error(err));
-        api.get('/admin/trainers').then(res => setTrainers(res.data)).catch(err => console.error(err));
-        api.get('/plans').then(res => setPlans(res.data)).catch(err => console.error(err));
+    // --------------------------------------------------------
+    // API FETCHING
+    // --------------------------------------------------------
+    const fetchAll = async () => {
+        try {
+            const statsRes = await api.get('/admin/stats');
+            setStats(statsRes.data);
+
+            const membersRes = await api.get('/admin/members');
+            setMembers(membersRes.data);
+
+            const trainersRes = await api.get('/admin/trainers');
+            setTrainers(trainersRes.data);
+
+            const plansRes = await api.get('/plans');
+            setPlans(plansRes.data);
+        } catch (err) {
+            console.error("Error fetching data:", err);
+        }
     };
 
     useEffect(() => { fetchAll(); }, []);
 
-    // ... Existing Handlers (Payment, CheckIn, Delete, Trainer, etc.) ...
-    
+    // --------------------------------------------------------
+    // 👇 BULLETPROOF PAYMENT HANDLER (Manual URL Params)
+    // --------------------------------------------------------
     const handlePayment = async (memberId, amount) => {
+        console.log("--- Payment Debug ---");
+        console.log("Member ID:", memberId);
+        console.log("Amount:", amount);
+
+        // 1. Validate Amount
+        if (!amount || amount <= 0) {
+            alert("❌ Error: This member has no valid plan price associated with them.\nPlease check if the member is assigned to a plan.");
+            return;
+        }
+
         if(confirm(`Confirm CASH payment of ₹${amount}?`)) {
             try {
-                await api.post(`/payments?memberId=${memberId}&amount=${amount}&method=Cash`);
-                alert("Payment Recorded");
-                fetchAll();
-            } catch (e) { alert("Failed: " + e.message); }
+                // 2. FORCE URL PARAMETERS
+                // This manually constructs the URL so it matches Spring Boot's @RequestParam exactly.
+                // URL will look like: /api/payments?memberId=1&amount=5000&method=Cash
+                const url = `/payments?memberId=${memberId}&amount=${amount}&method=Cash`;
+
+                // We send an empty body ({}) because all data is in the URL
+                await api.post(url, {});
+
+                alert("✅ Payment Recorded Successfully!");
+                
+                // 3. Refresh Data to show new Revenue immediately
+                await fetchAll(); 
+            } catch (e) { 
+                console.error("Payment Error:", e);
+                const errorMsg = e.response?.data?.message || e.response?.data || e.message;
+                alert("❌ Payment Failed: " + errorMsg); 
+            }
         }
     };
 
+    // --------------------------------------------------------
+    // OTHER HANDLERS
+    // --------------------------------------------------------
     const handleCheckIn = async (memberId) => {
         try {
             await api.post(`/attendance?memberId=${memberId}&status=Present`);
@@ -90,14 +133,13 @@ const AdminDashboard = () => {
         }
     };
 
-    // 👇 NEW: HANDLE ADD MEMBER
     const handleAddMember = async () => {
         if (!newMember.planId) {
             alert("Please select a Membership Plan");
             return;
         }
         try {
-            await api.post('/members/register', newMember); // Use the register endpoint
+            await api.post('/members/register', newMember); 
             alert("Member Added Successfully!");
             setShowAddMemberModal(false);
             setNewMember({ name: '', email: '', password: '', phone: '', address: '', planId: '', trainerId: '' });
@@ -107,6 +149,7 @@ const AdminDashboard = () => {
         }
     };
     
+    // --- EDIT HANDLERS ---
     const openEditTrainer = (trainer) => {
         setEditingTrainer({
             id: trainer.id,
@@ -163,11 +206,9 @@ const AdminDashboard = () => {
     const handleSavePlan = async () => {
         try {
             if (editingPlan) {
-                // Update
                 await api.put(`/plans/${editingPlan.id}`, planForm);
                 alert("Plan Updated!");
             } else {
-                // Create
                 await api.post('/plans', planForm);
                 alert("Plan Created!");
             }
@@ -203,6 +244,9 @@ const AdminDashboard = () => {
         setShowPlanModal(true);
     };
 
+    // --------------------------------------------------------
+    // UI RENDER
+    // --------------------------------------------------------
     return (
         <div className="fade-in">
             <div className="d-flex justify-content-between align-items-center mb-4">
@@ -211,7 +255,6 @@ const AdminDashboard = () => {
                     <Button variant="outline-light" onClick={() => openPlanModal(null)}>
                         <CreditCard size={20} className="me-2" /> Manage Plans
                     </Button>
-                    {/* 👇 NEW BUTTON: ADD MEMBER */}
                     <Button variant="outline-warning" onClick={() => setShowAddMemberModal(true)}>
                         <Plus size={20} className="me-2" /> Add Member
                     </Button>
@@ -221,7 +264,7 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {/* ... Stats Section ... */}
+            {/* STATS SECTION */}
             <Row className="g-4 mb-5">
                 <Col md={4}>
                     <Card className="p-3 border-primary h-100">
@@ -243,6 +286,7 @@ const AdminDashboard = () => {
                     <Card className="p-3 border-success h-100">
                         <Card.Body className="d-flex align-items-center gap-3">
                             <div className="bg-success bg-opacity-25 p-3 rounded-circle text-success"><TrendingUp size={32} /></div>
+                            {/* REVENUE DISPLAY */}
                             <div><p className="text-secondary mb-0">Total Revenue</p><h3 className="text-success fw-bold m-0">₹{stats.totalRevenue || 0}</h3></div>
                         </Card.Body>
                     </Card>
@@ -250,7 +294,7 @@ const AdminDashboard = () => {
             </Row>
 
 
-            {/* ... Member Table ... */}
+            {/* MEMBER TABLE */}
              <Card className="mb-5">
                 <Card.Header className="bg-transparent text-white fw-bold py-3 border-secondary">Member Management</Card.Header>
                 <Table hover responsive className="mb-0 align-middle">
@@ -269,12 +313,22 @@ const AdminDashboard = () => {
                                     <div className="fw-bold">{m.name}</div>
                                     <small className="text-secondary">{m.user?.email}</small>
                                 </td>
-                                <td>{m.membershipPlan?.planName}</td>
+                                <td>{m.membershipPlan?.planName || "No Plan"}</td>
                                 <td><Badge bg={m.endDate ? "success" : "danger"} className="bg-opacity-25 text-white">{m.endDate ? 'Active' : 'Pending'}</Badge></td>
                                 <td>
                                     <div className="d-flex gap-2">
                                         <Button size="sm" variant="outline-info" onClick={() => openEditMember(m)}><Edit size={16} /></Button>
-                                        <Button size="sm" variant="outline-success" onClick={() => handlePayment(m.id, m.membershipPlan?.price)}><DollarSign size={16} /></Button>
+                                        
+                                        {/* PAYMENT BUTTON - Passes Plan Price */}
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline-success" 
+                                            onClick={() => handlePayment(m.id, m.membershipPlan?.price)}
+                                            title="Record Cash Payment"
+                                        >
+                                            <DollarSign size={16} />
+                                        </Button>
+                                        
                                         <Button size="sm" variant="outline-primary" onClick={() => handleCheckIn(m.id)}><CheckSquare size={16} /></Button>
                                         <Button size="sm" variant="outline-danger" onClick={() => handleDeleteMember(m.id)}><Trash2 size={16} /></Button>
                                     </div>
@@ -285,7 +339,7 @@ const AdminDashboard = () => {
                 </Table>
             </Card>
 
-            {/* ... Trainer Table ... */}
+            {/* TRAINER TABLE */}
             <Card>
                 <Card.Header className="bg-transparent text-white fw-bold py-3 border-secondary">Trainer Staff</Card.Header>
                 <Table hover responsive className="mb-0 align-middle">
@@ -315,7 +369,7 @@ const AdminDashboard = () => {
                 </Table>
             </Card>
 
-            {/* ... Existing Modals ... */}
+            {/* TRAINER ADD MODAL */}
             <Modal show={showTrainerModal} onHide={() => setShowTrainerModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Add New Trainer</Modal.Title>
@@ -355,6 +409,7 @@ const AdminDashboard = () => {
                 </Modal.Footer>
             </Modal>
 
+            {/* TRAINER EDIT MODAL */}
             <Modal show={showEditTrainerModal} onHide={() => setShowEditTrainerModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Edit Trainer</Modal.Title>
@@ -391,6 +446,7 @@ const AdminDashboard = () => {
                 </Modal.Footer>
             </Modal>
 
+            {/* MEMBER EDIT MODAL */}
             <Modal show={showEditMemberModal} onHide={() => setShowEditMemberModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Edit Member</Modal.Title>
@@ -427,7 +483,7 @@ const AdminDashboard = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* --- PLAN MODAL --- */}
+            {/* PLAN MODAL */}
             <Modal show={showPlanModal} onHide={() => setShowPlanModal(false)} centered size="lg">
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">
@@ -513,7 +569,7 @@ const AdminDashboard = () => {
                 </Modal.Footer>
             </Modal>
 
-            {/* 👇 NEW: ADD MEMBER MODAL */}
+            {/* MEMBER ADD MODAL */}
             <Modal show={showAddMemberModal} onHide={() => setShowAddMemberModal(false)} centered>
                 <Modal.Header closeButton className="bg-dark border-secondary">
                     <Modal.Title className="text-white">Add New Member</Modal.Title>

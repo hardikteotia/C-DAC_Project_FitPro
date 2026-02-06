@@ -4,6 +4,7 @@ import com.fitpro.backend.entity.Member;
 import com.fitpro.backend.entity.Trainer;
 import com.fitpro.backend.service.MemberService;
 import com.fitpro.backend.service.TrainerService;
+import com.fitpro.backend.repository.PaymentRepository; // 👈 Import this!
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
+@CrossOrigin(origins = "*") // Ensure React can access this
 public class AdminController {
 
     @Autowired
@@ -22,21 +24,25 @@ public class AdminController {
     @Autowired
     private TrainerService trainerService;
 
+    // 👇 Inject the Payment Repo so we can count the money
+    @Autowired
+    private PaymentRepository paymentRepository;
+
     // --- DASHBOARD STATS ---
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         Map<String, Object> stats = new HashMap<>();
+
         long totalMembers = memberService.getAllMembers().size();
         long activeTrainers = trainerService.getAllTrainers().size();
-        // Calculate Revenue (Assuming generic calculation or fetching from DB)
-        double totalRevenue = memberService.getAllMembers().stream()
-                .filter(m -> m.getMembershipPlan() != null)
-                .mapToDouble(m -> m.getMembershipPlan().getPrice())
-                .sum();
+
+        //Ask the database for the sum of actual payments
+        double totalRevenue = paymentRepository.calculateTotalRevenue();
 
         stats.put("totalMembers", totalMembers);
         stats.put("activeTrainers", activeTrainers);
         stats.put("totalRevenue", totalRevenue);
+
         return ResponseEntity.ok(stats);
     }
 
@@ -52,7 +58,6 @@ public class AdminController {
         return ResponseEntity.ok("Member deleted successfully");
     }
 
-    //Update Member
     @PutMapping("/members/{id}")
     public ResponseEntity<Member> updateMember(@PathVariable Long id, @RequestBody Member member) {
         return ResponseEntity.ok(memberService.updateMember(id, member));
@@ -70,7 +75,6 @@ public class AdminController {
         return ResponseEntity.ok("Trainer deleted successfully");
     }
 
-    // 👇 NEW: Update Trainer (Fixes the error!)
     @PutMapping("/trainers/{id}")
     public ResponseEntity<Trainer> updateTrainer(@PathVariable Long id, @RequestBody Trainer trainer) {
         return ResponseEntity.ok(trainerService.updateTrainer(id, trainer));
