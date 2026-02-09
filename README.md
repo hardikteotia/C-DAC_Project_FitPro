@@ -1,92 +1,113 @@
-FitPro
-FitPro is a full-stack web application designed to streamline gym operations for administrators, trainers, and members. It features a robust Spring Boot backend and a responsive React frontend, integrating secure authentication, automated membership tracking, and online payment processing.
+🏋️ FitPro – Gym Management System
 
-🚀 Features
-For Members
-Secure Dashboard: View membership status, active plans, and assigned trainers.
+FitPro is a full-stack web application designed to digitize and streamline gym operations for administrators, trainers, and members. It features a Spring Boot REST API backend and a React-based frontend, with secure authentication, role-based access control, automated membership tracking, and online payment integration.
 
-BMI Calculator: Integrated tool for members to track health metrics and receive plan recommendations.
+🚀 Key Features
+👤 Members
 
-Attendance Tracking: View personal check-in history.
+Secure Dashboard: View active memberships, plans, and assigned trainers
 
-Online Payments: Seamless membership renewal via Razorpay integration.
+BMI Calculator: Track health metrics and receive fitness insights
 
-For Trainers
-Client Management: Access a roster of assigned active clients.
+Attendance History: View personal check-in records
 
-Progress Tracking: Monitor client health metrics and membership statuses.
+Online Payments: Renew memberships using Razorpay
 
-For Administrators
-Global Dashboard: Overview of total revenue, active members, and trainer staff.
+🏋️ Trainers
 
-Management Tools: Complete CRUD operations for members, trainers, and membership plans.
+Client Management: View assigned active members
 
-Manual Payments: Record cash payments and automatically sync membership expiry dates.
+Progress Tracking: Monitor client health data and membership status
 
-Attendance System: Check-in members and maintain digital logs.
+🛠️ Administrators
 
-🛠️ Tech Stack
+Global Dashboard: Track revenue, active members, and trainer count
+
+User & Plan Management: Full CRUD for members, trainers, and plans
+
+Manual Payments: Record cash payments with automatic expiry updates
+
+Attendance System: Digital member check-in and logging
+
+🧰 Tech Stack
 Backend
-Framework: Java Spring Boot
 
-Security: Spring Security with JWT (JSON Web Tokens) for stateless authentication.
+Java Spring Boot – RESTful API development
 
-Database: MySQL with Spring Data JPA/Hibernate.
+Spring Security + JWT – Stateless authentication & RBAC
 
-Payments: Razorpay API integration.
+MySQL + Hibernate (JPA) – Relational data persistence
+
+Razorpay API – Secure online payment processing
 
 Frontend
-Library: React.js (Vite)
 
-Styling: Bootstrap 5 with custom CSS variables for a dark-themed UI.
+React (Vite) – Component-based UI
 
-State Management: React Context API for authentication and user sessions.
+Bootstrap 5 + Custom CSS – Dark-themed responsive design
 
-Routing: React Router for role-based protected routes.
+Context API – Authentication & session management
 
-Icons: Lucide-React.
+React Router – Role-based protected routing
 
-⚙️ Configuration
-Backend Setup
-Navigate to src/main/resources/application.properties.
+Lucide-React – Icon library
 
-Configure your local MySQL database settings:
+🔐 Security Architecture
 
-Properties
+JWT-based authentication using a custom JwtRequestFilter
+
+Role-Based Access Control (RBAC) with three roles:
+
+ADMIN
+
+TRAINER
+
+MEMBER
+
+Enforced at both layers:
+
+Backend: Route-level authorization via SecurityConfig
+
+Frontend: Role-aware ProtectedRoute components
+
+⚙️ Configuration & Setup
+Backend
+
+Configure application.properties:
+
 spring.datasource.url=jdbc:mysql://localhost:3306/fitpro_db?createDatabaseIfNotExist=true
 spring.datasource.username=YOUR_USERNAME
 spring.datasource.password=YOUR_PASSWORD
-Add your Razorpay API credentials:
 
-Properties
 razorpay.api.key=YOUR_KEY
 razorpay.api.secret=YOUR_SECRET
-Frontend Setup
-Ensure the baseURL in src/api/axios.js matches your backend server (default: http://localhost:8080/api).
 
-Install dependencies and start the development server:
+Frontend
 
-Bash
+Ensure Axios base URL matches backend:
+
+http://localhost:8080/api
+
+
+Run:
+
 npm install
 npm run dev
 
-
-🔒 Security Implementation
-The project implements a custom JwtRequestFilter that intercepts every request to validate a Bearer token. Role-Based Access Control (RBAC) is enforced on both the frontend and backend:
-
-Frontend: ProtectedRoute component validates user roles before rendering views.
-
-Backend: SecurityConfig defines authorized paths for ADMIN, TRAINER, and MEMBER.
-
-
-
 🏗️ Project Structure
-src/main/java/com/fitpro/backend/controller: REST API endpoints.
+backend/
+ └── src/main/java/com/fitpro/
+     ├── controller/   # REST controllers
+     ├── entity/       # JPA entities
+     ├── service/      # Business logic
+     └── config/       # Security & configuration
 
-src/main/java/com/fitpro/backend/entity: JPA Data Models.
+frontend/
+ └── src/
+     ├── context/      # AuthContext
+     ├── api/          # Axios configuration
+     └── components/  # Reusable UI components
 
-src/main/java/com/fitpro/backend/service: Core Business Logic.
+🎯 Resume-Ready One-Liner (Very Important)
 
-src/context/AuthContext.jsx: Global authentication state management.
-
-src/api/axios.js: Centralized API client with automatic token attachment.
+Developed FitPro, a full-stack gym management system using Spring Boot and React, implementing JWT-based authentication, role-based access control, automated membership tracking, and Razorpay payment integration.
