@@ -16,9 +16,14 @@ const Register = () => {
     });
 
     useEffect(() => {
-        // Fetch plans and trainers
-        api.get('/public/plans').then(res => setPlans(res.data)).catch(err => console.log(err));
-        api.get('/public/trainers').then(res => setTrainers(res.data)).catch(err => console.log(err));
+        // ✅ FIXED: Removed '/public' to match the updated backend security paths
+        api.get('/plans')
+            .then(res => setPlans(res.data))
+            .catch(err => console.error("Plan Fetch Error:", err));
+
+        api.get('/trainers')
+            .then(res => setTrainers(res.data))
+            .catch(err => console.error("Trainer Fetch Error:", err));
     }, []);
 
     // 2. Validation Logic
