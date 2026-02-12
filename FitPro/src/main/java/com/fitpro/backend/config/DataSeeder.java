@@ -4,6 +4,7 @@ import com.fitpro.backend.entity.*;
 import com.fitpro.backend.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder; // ✅ Added this import
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,6 +19,9 @@ public class DataSeeder implements CommandLineRunner {
     @Autowired
     private TrainerRepository trainerRepo;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder; // ✅ Added this to handle encryption
+
     @Override
     public void run(String... args) throws Exception {
 
@@ -27,11 +31,12 @@ public class DataSeeder implements CommandLineRunner {
         if (!userRepo.existsByEmail("admin@fitpro.com")) {
             AppUser admin = new AppUser();
             admin.setEmail("admin@fitpro.com");
-            admin.setPassword("admin123"); // In real app: passwordEncoder.encode("admin123")
+            //UPDATED: Password is now encoded using BCrypt
+            admin.setPassword(passwordEncoder.encode("admin123"));
             admin.setRole(Role.ADMIN);
             userRepo.save(admin);
 
-            System.out.println(">>> ADMIN SEEDED: admin@fitpro.com <<<");
+            System.out.println(">>> ADMIN SEEDED: admin@fitpro.com (Encrypted) <<<");
         }
 
         // -----------------------------------------------------------
@@ -57,7 +62,6 @@ public class DataSeeder implements CommandLineRunner {
         // 3. SEED TRAINERS (Staff)
         // -----------------------------------------------------------
         if (trainerRepo.count() == 0) {
-
             // Trainer 1: John Cena
             createTrainer("John Cena", "john@fitpro.com", "9876543210", "Weight Lifting");
 
@@ -73,7 +77,8 @@ public class DataSeeder implements CommandLineRunner {
         // A. Create Login
         AppUser user = new AppUser();
         user.setEmail(email);
-        user.setPassword("trainer123"); // Default password
+        // ✅ UPDATED: Password is now encoded using BCrypt
+        user.setPassword(passwordEncoder.encode("trainer123"));
         user.setRole(Role.TRAINER);
         AppUser savedUser = userRepo.save(user);
 

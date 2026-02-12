@@ -38,7 +38,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/api/public/**", "/api/members/register").permitAll()
+                        // ✅ FIXED: Added specific paths for public access (Plans & Trainers)
+                        .requestMatchers("/api/auth/**", "/api/plans", "/api/trainers", "/api/members/register").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/trainers/**").hasAnyAuthority("ADMIN", "TRAINER")
                         .requestMatchers("/api/members/**").hasAnyAuthority("ADMIN", "MEMBER")
@@ -52,7 +53,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    //Using BCrypt for secure password encoding
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -74,7 +74,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
+        // ✅ FIXED: Added your Netlify domain to allowed origins
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
+                "https://profound-kashata-1401de.netlify.app"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
